@@ -118,7 +118,14 @@ def main():
         for i, t in enumerate(timesteps):
             t_batch = torch.full((1,), t, device=device, dtype=torch.long)
             noise_pred = pipe.unet(
-                latent_inv, t_batch, encoder_hidden_states=pipe.encode_prompt([""])
+                latent_inv,
+                t_batch,
+                encoder_hidden_states=pipe.encode_prompt(
+                    [""],
+                    device=device,
+                    num_images_per_prompt=1,
+                    do_classifier_free_guidance=False,
+                ),
             ).sample
             latent_inv = pipe.scheduler.step(noise_pred, t, latent_inv).prev_sample
 
