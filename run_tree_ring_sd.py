@@ -123,7 +123,8 @@ def main():
             num_images_per_prompt=1,
             do_classifier_free_guidance=False,
         )
-        if isinstance(prompt_embeds, tuple):
+        # Newer diffusers may return (prompt_embeds, negative_embeds) or similar
+        while hasattr(prompt_embeds, "__len__") and not hasattr(prompt_embeds, "shape"):
             prompt_embeds = prompt_embeds[0]
         for i, t in enumerate(timesteps):
             t_batch = torch.full((1,), t, device=device, dtype=torch.long)
