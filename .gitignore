@@ -1,0 +1,35 @@
+# Virtual environment
+.venv/
+venv/
+env/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# Checkpoints and outputs
+checkpoints/
+outputs_tree_ring/
+*.pt
+*.pth
+
+# IDE and OS
+.idea/
+.vscode/
+.DS_Store
+*.swp
+*~
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Data (optional: uncomment if you don't want to track data paths)
+# data/
+# *.zip
