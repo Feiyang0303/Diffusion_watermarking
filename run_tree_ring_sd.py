@@ -102,7 +102,13 @@ def main():
         # Encode image to latent x0 (scale by 0.18215 for SD)
         with torch.no_grad():
             pixel = pipe.image_processor.preprocess(pil_image).to(device).to(pipe.vae.dtype)
-            pixel = (pixel / 2 + 0.5).unsqueeze(0)
+            # VAE expects (B, C, H, W). Normalize from any preprocess shape (diffusers version-dependent).
+            pixel = pixel.squeeze()
+            if pixel.dim() == 3:
+                pixel = pixel.unsqueeze(0)
+            elif pixel.dim() > 4:
+                pixel = pixel.reshape(-1, pixel.shape[-3], pixel.shape[-2], pixel.shape[-1])
+            pixel = (pixel / 2 + 0.5).clamp(0, 1)
             latent_0 = pipe.vae.encode(pixel).latent_dist.sample() * pipe.vae.config.scaling_factor
 
         # DDIM inversion: x0 -> x1 -> ... -> xT (forward noising)
@@ -129,6 +135,18 @@ def main():
             print("-> Image is WATERMARKED (p = {:.2e})".format(result["p_value"]))
         else:
             print("-> Image is not watermarked or attack altered the signal (p = {:.2e})".format(result["p_value"]))
+
+        # Save detection result to file for comparison with paper
+        result_file = out_dir / "detection_result.txt"
+        with open(result_file, "w") as f:
+            f.write("Tree-Ring detection (key=%s, radius=%d, seed=%d)\n" % (args.key, args.radius, args.seed))
+            f.write("Prompt: %s\n" % args.prompt)
+            f.write("distance: %.6f\n" % result["distance"])
+            f.write("eta: %.6f\n" % result["eta"])
+            f.write("sigma_sq: %.6f\n" % result["sigma_sq"])
+            f.write("p_value: %.2e\n" % (result["p_value"] or 0))
+            f.write("is_watermarked: %s\n" % result["is_watermarked"])
+        print("Detection summary saved to", result_file)
 
     print("Done.")
 
