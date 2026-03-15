@@ -46,6 +46,41 @@ python run_tree_ring_sd.py --mode both --key rings --prompt "A cat on a sofa"
 
 Options: `--key zeros|rand|rings`, `--radius`, `--seed`, `--steps`.
 
+### Viewing actual results (images, metrics, paper comparison)
+
+To get **visible outputs** (images, detection results, training curves) for analysis and comparison with the papers:
+
+**Tree-Ring (Stable Diffusion):**  
+Generates watermarked and clean images, runs detection, and saves a summary.
+
+```bash
+PYTHONPATH=.. python run_tree_ring_sd.py --mode both --key rings --prompt "A cat on a sofa" --out_dir outputs_tree_ring
+```
+
+- **outputs_tree_ring/watermarked.png** – image generated with Tree-Ring watermark  
+- **outputs_tree_ring/clean.png** – same prompt, no watermark (for visual comparison)  
+- **outputs_tree_ring/detection_result.txt** – distance, p_value, is_watermarked (for Table/Fig comparison)
+
+**WatermarkDM (training + metrics + samples):**  
+Trains encoder/decoder and writes metrics and sample images.
+
+```bash
+PYTHONPATH=.. python run_train_watermark_dm.py --epochs 20 --out_dir outputs_watermark_dm --save outputs_watermark_dm/checkpoints
+```
+
+- **outputs_watermark_dm/training_metrics.csv** – epoch, loss, bit_accuracy (for training curves)  
+- **outputs_watermark_dm/samples_original.png**, **samples_watermarked.png** – grid of originals vs watermarked  
+- **outputs_watermark_dm/training_curves.png** – loss and bit accuracy vs epoch (if matplotlib installed)  
+- **outputs_watermark_dm/checkpoints/** – encoder.pt, decoder.pt
+
+**One command for both demos:**
+
+```bash
+PYTHONPATH=.. python run_demos.py --all
+```
+
+Use `--tree_ring_prompt` and `--watermark_dm_epochs` to customize. Output directories are listed at the end.
+
 ### Run tests
 
 From the `diffusion_watermarking` directory. On macOS with Homebrew Python, use a virtual environment first:
@@ -125,3 +160,29 @@ This repo is a Git project. To push to GitHub:
    git push -u origin main
    ```
    Replace `YOUR_USERNAME` with your GitHub username (or use the SSH URL from GitHub).
+
+## Running on watgpu (Linux)
+
+On Linux the repo directory name is case-sensitive. Python expects the package `diffusion_watermarking` (lowercase). After cloning you’ll have `Diffusion_watermarking`; use one of these:
+
+**Option A – Rename the folder (simplest)**  
+From your home directory:
+```bash
+cd ~
+mv Diffusion_watermarking diffusion_watermarking
+cd diffusion_watermarking
+source .venv/bin/activate
+python run_tests.py
+```
+
+**Option B – Symlink (keep folder name)**  
+From your home directory:
+```bash
+cd ~
+ln -s Diffusion_watermarking diffusion_watermarking
+cd Diffusion_watermarking
+source .venv/bin/activate
+python run_tests.py
+```
+
+Then install deps and run tests as in “Run tests” above (e.g. `pip install -r requirements.txt` then `python run_tests.py`).

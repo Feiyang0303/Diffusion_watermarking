@@ -4,6 +4,11 @@ import sys
 from pathlib import Path
 
 root = Path(__file__).resolve().parent
+# Parent must be on path so "diffusion_watermarking" package is found.
+# On Linux (e.g. watgpu) the repo folder must be named "diffusion_watermarking" (lowercase).
+if root.name != "diffusion_watermarking":
+    print("Warning: repo folder is '%s'. On Linux, rename to 'diffusion_watermarking' (lowercase) so tests can import the package." % root.name)
+    print("  cd .. && mv %s diffusion_watermarking && cd diffusion_watermarking" % root.name)
 research = root.parent
 sys.path.insert(0, str(research))
 sys.path.insert(0, str(root))

@@ -8,3 +8,4 @@ torchvision>=0.13
 diffusers>=0.21
 transformers>=4.25
 accelerate>=0.20
+matplotlib>=3.5

@@ -114,9 +114,11 @@ if TORCH_AVAILABLE:
         num_epochs: int = 100,
         lr: float = 1e-3,
         gamma: float = 1.0,
+        log_callback=None,
     ):
         """
         Train E and D with Eq. (2): L_BCE(w, D(E(x,w))) + gamma * ||x - E(x,w)||^2.
+        If log_callback is set, called at end of each epoch as log_callback(epoch, {"loss": float}).
         """
         opt = torch.optim.Adam(
             list(encoder.parameters()) + list(decoder.parameters()),
@@ -125,6 +127,8 @@ if TORCH_AVAILABLE:
         encoder.train()
         decoder.train()
         for epoch in range(num_epochs):
+            epoch_loss = 0.0
+            n_batches = 0
             for batch in dataloader:
                 if isinstance(batch, (list, tuple)):
                     x = batch[0].to(device)
@@ -140,6 +144,11 @@ if TORCH_AVAILABLE:
                 opt.zero_grad()
                 loss.backward()
                 opt.step()
+                epoch_loss += loss.item()
+                n_batches += 1
+            avg_loss = epoch_loss / max(n_batches, 1)
+            if log_callback is not None:
+                log_callback(epoch, {"loss": avg_loss})
         return encoder, decoder
 
 else:
