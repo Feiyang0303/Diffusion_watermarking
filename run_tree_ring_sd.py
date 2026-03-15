@@ -98,6 +98,7 @@ def main():
             print("Run with --mode generate first to create watermarked.png")
             return
         pil_image = Image.open(image_path).convert("RGB")
+        print("Loaded image, encoding to latent...")
 
         # Encode image to latent x0 (scale by 0.18215 for SD)
         with torch.no_grad():
@@ -112,6 +113,7 @@ def main():
             latent_0 = pipe.vae.encode(pixel).latent_dist.sample() * pipe.vae.config.scaling_factor
 
         # DDIM inversion: x0 -> x1 -> ... -> xT (forward noising)
+        print("Running DDIM inversion (%d steps)..." % args.steps)
         pipe.scheduler.set_timesteps(args.steps)
         timesteps = pipe.scheduler.timesteps
         latent_inv = latent_0.clone()
@@ -131,8 +133,11 @@ def main():
                 encoder_hidden_states=prompt_embeds,
             ).sample
             latent_inv = pipe.scheduler.step(noise_pred, t, latent_inv).prev_sample
+            if (i + 1) % 10 == 0 or (i + 1) == len(timesteps):
+                print("  inversion step %d/%d" % (i + 1, len(timesteps)))
 
         inverted_noise = latent_inv.cpu().float().numpy()[0]
+        print("Running Tree-Ring detection...")
         result = detect_tree_ring(
             inverted_noise,
             key_type=args.key,
