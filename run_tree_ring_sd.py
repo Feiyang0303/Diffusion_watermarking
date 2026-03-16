@@ -136,7 +136,12 @@ def main():
             ).sample
             latent_inv = pipe.scheduler.step(noise_pred, t, latent_inv).prev_sample
 
-        inverted_noise = latent_inv.cpu().float().numpy()[0]
+        print("Inversion done, converting to numpy...", flush=True)
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+            torch.cuda.synchronize()
+        # Detach from graph before moving to CPU/NumPy
+        inverted_noise = latent_inv.detach().cpu().float().numpy()[0]
         print("Running Tree-Ring detection...", flush=True)
         result = detect_tree_ring(
             inverted_noise,
