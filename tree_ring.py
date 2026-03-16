@@ -104,6 +104,7 @@ def inject_watermark_noise(
     key_type: Literal["zeros", "rand", "rings"] = "rings",
     radius: int = 10,
     seed: Optional[int] = None,
+    noise_seed: Optional[int] = None,
     num_rings: int = 4,
 ) -> np.ndarray:
     """
@@ -132,7 +133,8 @@ def inject_watermark_noise(
     else:
         raise ValueError("key_type must be 'zeros', 'rand', or 'rings'")
     # Start from Gaussian noise, then overwrite Fourier region with key
-    rng = np.random.default_rng(seed if key_type != "rand" else None)
+    # Keep key deterministic (via `seed`) while allowing per-sample base noise variation (`noise_seed`).
+    rng = np.random.default_rng((noise_seed if noise_seed is not None else seed) if key_type != "rand" else None)
     noise = rng.standard_normal((h, w)) + 1j * rng.standard_normal((h, w))
     noise = _fft2(noise)  # actually we want: real noise -> FFT -> replace mask -> IFFT
     # Simpler: sample real noise, FFT, replace masked coeffs with key, IFFT
@@ -148,6 +150,7 @@ def inject_watermark_noise_latent(
     key_type: Literal["zeros", "rand", "rings"] = "rings",
     radius: int = 10,
     seed: Optional[int] = None,
+    noise_seed: Optional[int] = None,
     num_rings: int = 4,
 ) -> np.ndarray:
     """(C, H, W) latent shape; inject same 2D key pattern in each channel."""
@@ -159,7 +162,8 @@ def inject_watermark_noise_latent(
         key_2d = make_key_tree_ring_rand((h, w), mask, seed=seed)
     else:
         key_2d = make_key_tree_ring_rings((h, w), mask, num_rings=num_rings, seed=seed)
-    rng = np.random.default_rng(seed if key_type != "rand" else None)
+    # Keep key deterministic (via `seed`) while allowing per-sample base noise variation (`noise_seed`).
+    rng = np.random.default_rng((noise_seed if noise_seed is not None else seed) if key_type != "rand" else None)
     out = np.zeros(latent_shape, dtype=np.float32)
     for ch in range(c):
         base = rng.standard_normal((h, w)).astype(np.float64)

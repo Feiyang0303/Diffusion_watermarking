@@ -89,7 +89,8 @@ def main() -> None:
                 latent_shape,
                 key_type=args.key,
                 radius=args.radius,
-                seed=args.seed,  # fixed key; randomness via RNG below for random noise
+                seed=args.seed,  # fixed key
+                noise_seed=args.seed + 1000 + i,  # vary base noise per-sample (paper-style)
             )
             res_wm = detect_tree_ring(
                 wm_noise,
