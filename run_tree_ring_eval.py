@@ -43,6 +43,13 @@ def main() -> None:
     parser.add_argument("--radius", type=int, default=10, help="Tree-Ring radius")
     parser.add_argument("--seed", type=int, default=42, help="Base random seed")
     parser.add_argument(
+        "--wm_perturb_std",
+        type=float,
+        default=0.0,
+        help="Std of additive Gaussian noise applied to WATERMARKED latents before detection "
+        "(mimics inversion/attack error; set e.g. 0.05).",
+    )
+    parser.add_argument(
         "--out_csv",
         type=str,
         default="outputs_tree_ring/latent_eval.csv",
@@ -59,6 +66,8 @@ def main() -> None:
     print("Tree-Ring latent-level evaluation")
     print("---------------------------------")
     print(f"key={args.key}, radius={args.radius}, seed={args.seed}")
+    if args.wm_perturb_std > 0:
+        print(f"watermarked perturb std={args.wm_perturb_std}")
     print(f"latent_shape={latent_shape}, num_samples={args.num_samples}")
     print(f"Writing CSV to {out_path}")
 
@@ -92,6 +101,8 @@ def main() -> None:
                 seed=args.seed,  # fixed key
                 noise_seed=args.seed + 1000 + i,  # vary base noise per-sample (paper-style)
             )
+            if args.wm_perturb_std > 0:
+                wm_noise = wm_noise + rng.standard_normal(latent_shape).astype(np.float32) * args.wm_perturb_std
             res_wm = detect_tree_ring(
                 wm_noise,
                 key_type=args.key,
