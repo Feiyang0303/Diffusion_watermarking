@@ -67,6 +67,7 @@ def main():
     parser = argparse.ArgumentParser(description="Compute Tree-Ring detection metrics from SD eval CSV")
     parser.add_argument("--csv", type=str, required=True, help="Path to SD eval CSV (with attack column)")
     parser.add_argument("--out_dir", type=str, default=None, help="Directory for outputs (default: same as CSV)")
+    parser.add_argument("--out_prefix", type=str, default="sd_eval_metrics", help="Output file prefix (default: sd_eval_metrics → sd_eval_metrics.csv, _table.md, _table.tex). Use e.g. metrics_n5 / metrics_n20 to keep n=5 and n=20 separate.")
     args = parser.parse_args()
 
     csv_path = Path(args.csv)
@@ -74,6 +75,7 @@ def main():
         raise FileNotFoundError(csv_path)
     out_dir = Path(args.out_dir) if args.out_dir else csv_path.parent
     out_dir.mkdir(parents=True, exist_ok=True)
+    base = args.out_prefix.strip()
 
     df = pd.read_csv(csv_path)
     if "attack" not in df.columns:
@@ -128,12 +130,12 @@ def main():
     })
 
     metrics_df = pd.DataFrame(rows)
-    metrics_csv = out_dir / "sd_eval_metrics.csv"
+    metrics_csv = out_dir / f"{base}.csv"
     metrics_df.to_csv(metrics_csv, index=False)
     print(f"Saved metrics CSV: {metrics_csv}")
 
     # Markdown table for paper
-    md_path = out_dir / "sd_eval_metrics_table.md"
+    md_path = out_dir / f"{base}_table.md"
     with open(md_path, "w") as f:
         f.write("# Tree-Ring detection metrics (image-level SD eval)\n\n")
         f.write("Lower distance = more likely watermarked. Threshold swept to compute ROC.\n\n")
@@ -144,10 +146,28 @@ def main():
             if atk == "random_baseline":
                 f.write("| *Random* | — | 0.50 | 0.01 | 0.05 | 0.50 |\n")
             else:
-                param = r["attack_param"] if pd.notna(r["attack_param"]) else "—"
+                param = r["attack_param"]
+                param = "—" if (pd.isna(param) or not str(param).strip()) else str(param).strip()
                 f.write(f"| {atk} | {param} | {r['auc']:.2f} | {r['tpr_at_1pct_fpr']:.2f} | {r['tpr_at_5pct_fpr']:.2f} | {r['best_accuracy']:.2f} |\n")
         f.write("\n")
     print(f"Saved markdown table: {md_path}")
+
+    # LaTeX table (optional, for direct paste into paper)
+    tex_path = out_dir / f"{base}_table.tex"
+    with open(tex_path, "w") as f:
+        f.write("% Tree-Ring detection metrics (image-level SD eval)\n")
+        f.write("\\begin{tabular}{llcccc}\n\\toprule\n")
+        f.write("Attack & Param & AUC & TPR @ 1\\% FPR & TPR @ 5\\% FPR & Best Acc \\\\\n\\midrule\n")
+        for _, r in metrics_df.iterrows():
+            atk = r["attack"]
+            if atk == "random_baseline":
+                f.write("Random & — & 0.50 & 0.01 & 0.05 & 0.50 \\\\\n")
+            else:
+                param = r["attack_param"]
+                param = "—" if (pd.isna(param) or not str(param).strip()) else str(param).strip()
+                f.write(f"{atk} & {param} & {r['auc']:.2f} & {r['tpr_at_1pct_fpr']:.2f} & {r['tpr_at_5pct_fpr']:.2f} & {r['best_accuracy']:.2f} \\\\\n")
+        f.write("\\bottomrule\n\\end{tabular}\n")
+    print(f"Saved LaTeX table: {tex_path}")
 
     # Print summary
     print("\n--- Metrics summary ---")
