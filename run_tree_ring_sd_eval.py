@@ -9,6 +9,10 @@ For N samples:
 - write per-sample metrics to a CSV for paper-style plots/ROC curves
 """
 
+# Disable tqdm progress bars so terminal keypresses don't pollute output (e.g. in tmux)
+import os
+os.environ["TQDM_DISABLE"] = "1"
+
 import argparse
 import csv
 import io
@@ -110,7 +114,8 @@ def _detect_tree_ring_from_pil(
     while hasattr(prompt_embeds, "__len__") and not hasattr(prompt_embeds, "shape"):
         prompt_embeds = prompt_embeds[0]
 
-    for t in timesteps:
+    n_steps = len(timesteps)
+    for step_idx, t in enumerate(timesteps):
         t_batch = torch.full((1,), t, device=device, dtype=torch.long)
         with torch.no_grad():
             noise_pred = pipe.unet(
@@ -119,6 +124,8 @@ def _detect_tree_ring_from_pil(
                 encoder_hidden_states=prompt_embeds,
             ).sample
         latent_inv = pipe.scheduler.step(noise_pred, t, latent_inv).prev_sample
+        if (step_idx + 1) % 10 == 0 or step_idx == 0:
+            print(f"  inversion step {step_idx + 1}/{n_steps}", flush=True)
 
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
@@ -155,11 +162,28 @@ def main() -> None:
     parser.add_argument("--save_images", type=int, default=3, help="Save first K clean/wm (+attacked) images")
 
     parser.add_argument("--attack", choices=["none", "jpeg", "resize", "crop"], default="none")
+    parser.add_argument(
+        "--attacks",
+        type=str,
+        default=None,
+        help="Comma-separated list of attacks to evaluate in one run, e.g. none,jpeg,resize,crop. "
+        "Overrides --attack; each sample is generated once then each attack is applied and detected.",
+    )
     parser.add_argument("--jpeg_quality", type=int, default=50)
     parser.add_argument("--resize_short", type=int, default=384, help="Short side for resize attack")
     parser.add_argument("--crop_frac", type=float, default=0.8, help="Center crop fraction for crop attack")
 
     args = parser.parse_args()
+
+    # Support multi-attack run: --attacks none,jpeg,resize,crop
+    if args.attacks:
+        attack_list = [a.strip().lower() for a in args.attacks.split(",") if a.strip()]
+        for a in attack_list:
+            if a not in ("none", "jpeg", "resize", "crop"):
+                raise ValueError(f"Unknown attack in --attacks: {a!r}")
+        args._attack_list = attack_list
+    else:
+        args._attack_list = [args.attack]
 
     import torch
     from diffusers import StableDiffusionPipeline, DDIMScheduler
@@ -188,13 +212,8 @@ def main() -> None:
     print("----------------")
     print(f"num_samples={args.num_samples}, steps={args.steps}, prompt={args.prompt!r}")
     print(f"key={args.key}, radius={args.radius}, base_seed={args.seed}")
-    print(f"attack={args.attack}")
-    if args.attack == "jpeg":
-        print(f"  jpeg_quality={args.jpeg_quality}")
-    elif args.attack == "resize":
-        print(f"  resize_short={args.resize_short}")
-    elif args.attack == "crop":
-        print(f"  crop_frac={args.crop_frac}")
+    print(f"attacks={args._attack_list}")
+    print(f"  jpeg_quality={args.jpeg_quality}, resize_short={args.resize_short}, crop_frac={args.crop_frac}")
     print(f"writing CSV -> {out_csv}")
 
     with out_csv.open("w", newline="") as f:
@@ -217,6 +236,7 @@ def main() -> None:
         )
 
         for i in range(args.num_samples):
+            print(f"Sample {i + 1}/{args.num_samples} (seed={args.seed + i}) ...", flush=True)
             seed_i = args.seed + i
             t0 = time.time()
 
@@ -237,6 +257,7 @@ def main() -> None:
             latents_clean = latents_clean * pipe.scheduler.init_noise_sigma
 
             # 3) Generate images
+            print("  generating watermarked image ...", flush=True)
             gen_img = torch.Generator(device=device).manual_seed(seed_i + 1)
             out_wm = pipe(
                 prompt=args.prompt,
@@ -246,7 +267,7 @@ def main() -> None:
                 generator=gen_img,
             )
             img_wm = out_wm.images[0]
-
+            print("  generating clean image ...", flush=True)
             out_clean = pipe(
                 prompt=args.prompt,
                 latents=latents_clean,
@@ -256,86 +277,90 @@ def main() -> None:
             )
             img_clean = out_clean.images[0]
 
-            # 4) Apply attack (optional)
-            img_wm_a = _apply_attack(img_wm, args.attack, args.jpeg_quality, args.resize_short, args.crop_frac)
-            img_clean_a = _apply_attack(img_clean, args.attack, args.jpeg_quality, args.resize_short, args.crop_frac)
+            # 4) For each attack: apply, detect both, write rows
+            for atk in args._attack_list:
+                img_wm_a = _apply_attack(img_wm, atk, args.jpeg_quality, args.resize_short, args.crop_frac)
+                img_clean_a = _apply_attack(img_clean, atk, args.jpeg_quality, args.resize_short, args.crop_frac)
 
-            # 5) Detect both
-            res_wm = _detect_tree_ring_from_pil(
-                pipe,
-                img_wm_a,
-                device=device,
-                steps=args.steps,
-                key=args.key,
-                radius=args.radius,
-                seed=args.seed,
-            )
-            res_clean = _detect_tree_ring_from_pil(
-                pipe,
-                img_clean_a,
-                device=device,
-                steps=args.steps,
-                key=args.key,
-                radius=args.radius,
-                seed=args.seed,
-            )
+                print(f"  attack={atk}: inverting watermarked ...", flush=True)
+                res_wm = _detect_tree_ring_from_pil(
+                    pipe,
+                    img_wm_a,
+                    device=device,
+                    steps=args.steps,
+                    key=args.key,
+                    radius=args.radius,
+                    seed=args.seed,
+                )
+                print(f"  attack={atk}: inverting clean ...", flush=True)
+                res_clean = _detect_tree_ring_from_pil(
+                    pipe,
+                    img_clean_a,
+                    device=device,
+                    steps=args.steps,
+                    key=args.key,
+                    radius=args.radius,
+                    seed=args.seed,
+                )
 
-            dt = time.time() - t0
+                dt = time.time() - t0
+                attack_param = ""
+                if atk == "jpeg":
+                    attack_param = str(args.jpeg_quality)
+                elif atk == "resize":
+                    attack_param = str(args.resize_short)
+                elif atk == "crop":
+                    attack_param = str(args.crop_frac)
 
-            attack_param = ""
-            if args.attack == "jpeg":
-                attack_param = str(args.jpeg_quality)
-            elif args.attack == "resize":
-                attack_param = str(args.resize_short)
-            elif args.attack == "crop":
-                attack_param = str(args.crop_frac)
+                writer.writerow(
+                    [
+                        i,
+                        "watermarked",
+                        seed_i,
+                        args.prompt,
+                        atk,
+                        attack_param,
+                        res_wm.distance,
+                        res_wm.eta,
+                        res_wm.sigma_sq,
+                        res_wm.p_value,
+                        int(res_wm.is_watermarked),
+                        dt,
+                    ]
+                )
+                writer.writerow(
+                    [
+                        i,
+                        "clean",
+                        seed_i,
+                        args.prompt,
+                        atk,
+                        attack_param,
+                        res_clean.distance,
+                        res_clean.eta,
+                        res_clean.sigma_sq,
+                        res_clean.p_value,
+                        int(res_clean.is_watermarked),
+                        dt,
+                    ]
+                )
+                f.flush()
 
-            writer.writerow(
-                [
-                    i,
-                    "watermarked",
-                    seed_i,
-                    args.prompt,
-                    args.attack,
-                    attack_param,
-                    res_wm.distance,
-                    res_wm.eta,
-                    res_wm.sigma_sq,
-                    res_wm.p_value,
-                    int(res_wm.is_watermarked),
-                    dt,
-                ]
-            )
-            writer.writerow(
-                [
-                    i,
-                    "clean",
-                    seed_i,
-                    args.prompt,
-                    args.attack,
-                    attack_param,
-                    res_clean.distance,
-                    res_clean.eta,
-                    res_clean.sigma_sq,
-                    res_clean.p_value,
-                    int(res_clean.is_watermarked),
-                    dt,
-                ]
-            )
-            f.flush()
+                if i < args.save_images and atk != "none":
+                    img_clean_a.save(out_dir / f"{i:04d}_clean_{atk}.png")
+                    img_wm_a.save(out_dir / f"{i:04d}_watermarked_{atk}.png")
+
+                print(
+                    f"  [{atk}] wm_dist={res_wm.distance:.3f} clean_dist={res_clean.distance:.3f}",
+                    flush=True,
+                )
 
             if i < args.save_images:
                 img_clean.save(out_dir / f"{i:04d}_clean.png")
                 img_wm.save(out_dir / f"{i:04d}_watermarked.png")
-                if args.attack != "none":
-                    img_clean_a.save(out_dir / f"{i:04d}_clean_{args.attack}.png")
-                    img_wm_a.save(out_dir / f"{i:04d}_watermarked_{args.attack}.png")
 
-            print(
-                f"[{i+1}/{args.num_samples}] seed={seed_i} "
-                f"wm_dist={res_wm.distance:.3f} clean_dist={res_clean.distance:.3f} "
-                f"({dt:.1f}s)"
-            )
+            dt = time.time() - t0
+            print(f"[{i+1}/{args.num_samples}] seed={seed_i} ({dt:.1f}s)", flush=True)
 
     print("\nDone.")
     print(f"CSV: {out_csv}")
