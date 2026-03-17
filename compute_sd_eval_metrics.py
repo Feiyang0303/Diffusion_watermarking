@@ -50,7 +50,9 @@ def auc_trapezoidal(fpr: np.ndarray, tpr: np.ndarray) -> float:
     order = np.argsort(fpr)
     fpr = fpr[order]
     tpr = tpr[order]
-    return float(np.trapz(tpr, fpr))
+    if hasattr(np, "trapezoid"):
+        return float(np.trapezoid(tpr, fpr))
+    return float(np.trapz(tpr, fpr))  # NumPy < 2.0
 
 
 def tpr_at_fpr(fpr: np.ndarray, tpr: np.ndarray, target_fpr: float) -> float:
