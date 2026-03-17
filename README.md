@@ -18,10 +18,17 @@ Implementations of two approaches from the literature:
 
 ```
 diffusion_watermarking/
-├── tree_ring.py          # Tree-Ring key construction, injection, detection (numpy/scipy)
-├── watermark_dm.py       # WatermarkDM: encoder/decoder nets + text-to-image loss helpers
-├── run_tree_ring_demo.py # Demo Tree-Ring with numpy only (no SD)
-├── run_tree_ring_sd.py   # Full Tree-Ring + Stable Diffusion (generate & detect)
+├── tree_ring.py                 # Tree-Ring key construction, injection, detection (numpy/scipy)
+├── watermark_dm.py              # WatermarkDM: encoder/decoder nets + text-to-image loss helpers
+├── run_tree_ring_demo.py        # Demo Tree-Ring with numpy only (no SD)
+├── run_tree_ring_sd.py          # Full Tree-Ring + Stable Diffusion (generate & detect)
+├── run_tree_ring_sd_eval.py     # Image-level eval with attacks (none, jpeg, resize, crop)
+├── run_tree_ring_eval.py        # Latent-level eval (synthetic latents, no GPU)
+├── compute_sd_eval_metrics.py   # AUC, TPR@FPR, best accuracy from eval CSV
+├── write_experiments_summary.py # Narrative + table template for paper experiments section
+├── plot_robustness.py           # ROC and distance histograms per attack
+├── plot_sd_eval_roc.py          # Single-panel ROC (image-level)
+├── plot_sd_eval_dist.py         # Single-panel distance histogram
 ├── requirements.txt
 └── README.md
 ```
@@ -80,6 +87,30 @@ PYTHONPATH=.. python run_demos.py --all
 ```
 
 Use `--tree_ring_prompt` and `--watermark_dm_epochs` to customize. Output directories are listed at the end.
+
+### Experiments pipeline (Tree-Ring paper-style metrics and narrative)
+
+After running image-level eval with attacks (see below), use these scripts to get **metrics tables** and **narrative** for the paper:
+
+1. **Compute metrics** (AUC, TPR @ 1% / 5% FPR, best accuracy per attack; includes random baseline):
+
+   ```bash
+   PYTHONPATH=.. python compute_sd_eval_metrics.py --csv outputs_tree_ring_sd_eval/sd_eval_attacks.csv --out_dir outputs_tree_ring_sd_eval
+   ```
+
+   Produces: `sd_eval_metrics.csv`, `sd_eval_metrics_table.md`.
+
+2. **Generate experiments summary** (setup description, results paragraph, baselines note, limitations):
+
+   ```bash
+   PYTHONPATH=.. python write_experiments_summary.py --metrics outputs_tree_ring_sd_eval/sd_eval_metrics.csv
+   ```
+
+   Produces: `EXPERIMENTS_SUMMARY.md` in the same directory. Adapt the text for your paper’s experiments section.
+
+3. **Plots** (run before or after): `plot_robustness.py` (ROC + histograms per attack), `plot_sd_eval_roc.py`, `plot_sd_eval_dist.py` — see script docstrings.
+
+To **add another baseline** (e.g. another method): run their detector on the same images, produce a CSV with columns `attack`, `type` (watermarked/clean), `distance`, then merge or add rows to the metrics CSV with the same column names so you can compare AUC and TPR@FPR in one table.
 
 ### Run tests
 
