@@ -78,9 +78,10 @@ def main():
             continue
         fpr, tpr = roc_from_distances(wm, clean)
         label = f"{atk}"
-        if (sub["attack_param"] != "").any():
-            param = sub["attack_param"].dropna().iloc[0]
-            if str(param):
+        params = sub["attack_param"].dropna()
+        if len(params) > 0:
+            param = str(params.iloc[0]).strip()
+            if param:
                 label += f" ({param})"
         plt.plot(fpr, tpr, color=attack_color[atk], label=label, linewidth=2)
     plt.plot([0, 1], [0, 1], "k--", alpha=0.4, label="Random")
