@@ -4,7 +4,7 @@ Tree-Ring image-level evaluation (Stable Diffusion).
 
 For N samples:
 - generate a clean image and a watermarked image (same prompt, different seeds)
-- optionally apply an image-space attack (jpeg / resize / crop)
+- optionally apply an image-space attack (paper Sec 4.3: rotation, jpeg, crop+scale, blur, noise, color_jitter)
 - run DDIM inversion + Tree-Ring detection on both
 - write per-sample metrics to a CSV for paper-style plots/ROC curves
 """
@@ -21,15 +21,36 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional, Tuple
 
+import numpy as np
+
+
+# All supported attacks (paper Table 2 / Sec 4.3)
+ATTACK_CHOICES = (
+    "none",
+    "jpeg",
+    "resize",
+    "crop",        # random crop + rescale (paper: 75% crop)
+    "rotation",    # paper: 75°
+    "blur",        # paper: Gaussian 8×8
+    "noise",       # paper: Gaussian σ=0.1
+    "color_jitter", # paper: brightness factor in [0, 6]
+)
+
 
 def _apply_attack(
     img,
     attack: str,
-    jpeg_quality: int,
-    resize_short: int,
-    crop_frac: float,
+    attack_seed: int,
+    jpeg_quality: int = 25,
+    resize_short: int = 384,
+    crop_frac: float = 0.75,
+    rotation_deg: float = 75.0,
+    blur_size: int = 8,
+    noise_std: float = 0.1,
+    brightness_max: float = 6.0,
 ):
-    from PIL import Image
+    """Apply a single attack. attack_seed ensures same random choices when applied to wm and clean."""
+    from PIL import Image, ImageFilter, ImageEnhance
 
     if attack == "none":
         return img
@@ -52,17 +73,46 @@ def _apply_attack(
         return img2.resize((w, h), resample=Image.BICUBIC)
 
     if attack == "crop":
+        # Paper: random cropping and scaling (75% crop). Random top-left, then resize back.
         if not (0.0 < crop_frac <= 1.0):
             raise ValueError("--crop_frac must be in (0, 1]")
         w, h = img.size
         new_w = max(1, int(round(w * crop_frac)))
         new_h = max(1, int(round(h * crop_frac)))
-        left = (w - new_w) // 2
-        top = (h - new_h) // 2
+        rng = np.random.default_rng(attack_seed)
+        left = rng.integers(0, w - new_w + 1) if w > new_w else 0
+        top = rng.integers(0, h - new_h + 1) if h > new_h else 0
         img2 = img.crop((left, top, left + new_w, top + new_h))
         return img2.resize((w, h), resample=Image.BICUBIC)
 
-    raise ValueError(f"Unknown attack: {attack}")
+    if attack == "rotation":
+        # Paper: 75° rotation. Expand=False keeps original canvas size.
+        angle = float(rotation_deg)
+        return img.rotate(-angle, resample=Image.BICUBIC, expand=False)
+
+    if attack == "blur":
+        # Paper: Gaussian blur with 8×8 filter. PIL GaussianBlur(radius) ~ sigma.
+        # For kernel size 8, use radius = (size-1)/2 ≈ 3.5 or 4.
+        radius = max(0.5, (blur_size - 1) / 2.0)
+        return img.filter(ImageFilter.GaussianBlur(radius=radius))
+
+    if attack == "noise":
+        # Paper: Gaussian noise σ=0.1. Image is 0–255; scale so σ=0.1 in normalized [0,1] → 25.5 in 0–255.
+        arr = np.array(img, dtype=np.float64)
+        rng = np.random.default_rng(attack_seed)
+        arr = arr + rng.standard_normal(arr.shape) * (noise_std * 255.0)
+        arr = np.clip(arr, 0, 255).astype(np.uint8)
+        return Image.fromarray(arr)
+
+    if attack == "color_jitter":
+        # Paper: brightness factor uniformly sampled in [0, 6].
+        rng = np.random.default_rng(attack_seed)
+        factor = float(rng.uniform(0.0, brightness_max))
+        # PIL: 1.0 = no change; 0 = black; 6 = very bright. Clamp to avoid overflow.
+        factor = max(0.01, min(10.0, factor))
+        return ImageEnhance.Brightness(img).enhance(factor)
+
+    raise ValueError(f"Unknown attack: {attack!r}. Choose from {ATTACK_CHOICES}")
 
 
 @dataclass
@@ -161,26 +211,30 @@ def main() -> None:
     parser.add_argument("--out_csv", type=str, default="outputs_tree_ring_sd_eval/sd_eval.csv")
     parser.add_argument("--save_images", type=int, default=3, help="Save first K clean/wm (+attacked) images")
 
-    parser.add_argument("--attack", choices=["none", "jpeg", "resize", "crop"], default="none")
+    parser.add_argument("--attack", choices=ATTACK_CHOICES, default="none")
     parser.add_argument(
         "--attacks",
         type=str,
         default=None,
-        help="Comma-separated list of attacks to evaluate in one run, e.g. none,jpeg,resize,crop. "
+        help="Comma-separated list of attacks (paper Table 2: none,jpeg,crop,rotation,blur,noise,color_jitter). "
         "Overrides --attack; each sample is generated once then each attack is applied and detected.",
     )
-    parser.add_argument("--jpeg_quality", type=int, default=50)
+    parser.add_argument("--jpeg_quality", type=int, default=25, help="JPEG quality (paper: 25)")
     parser.add_argument("--resize_short", type=int, default=384, help="Short side for resize attack")
-    parser.add_argument("--crop_frac", type=float, default=0.8, help="Center crop fraction for crop attack")
+    parser.add_argument("--crop_frac", type=float, default=0.75, help="Random crop fraction (paper: 0.75)")
+    parser.add_argument("--rotation_deg", type=float, default=75.0, help="Rotation angle in degrees (paper: 75)")
+    parser.add_argument("--blur_size", type=int, default=8, help="Gaussian blur kernel size (paper: 8)")
+    parser.add_argument("--noise_std", type=float, default=0.1, help="Gaussian noise std in [0,1] scale (paper: 0.1)")
+    parser.add_argument("--brightness_max", type=float, default=6.0, help="Color jitter brightness factor max (paper: 6)")
 
     args = parser.parse_args()
 
-    # Support multi-attack run: --attacks none,jpeg,resize,crop
+    # Support multi-attack run: --attacks none,jpeg,crop,rotation,blur,noise,color_jitter
     if args.attacks:
         attack_list = [a.strip().lower() for a in args.attacks.split(",") if a.strip()]
         for a in attack_list:
-            if a not in ("none", "jpeg", "resize", "crop"):
-                raise ValueError(f"Unknown attack in --attacks: {a!r}")
+            if a not in ATTACK_CHOICES:
+                raise ValueError(f"Unknown attack in --attacks: {a!r}. Choose from {ATTACK_CHOICES}")
         args._attack_list = attack_list
     else:
         args._attack_list = [args.attack]
@@ -214,6 +268,7 @@ def main() -> None:
     print(f"key={args.key}, radius={args.radius}, base_seed={args.seed}")
     print(f"attacks={args._attack_list}")
     print(f"  jpeg_quality={args.jpeg_quality}, resize_short={args.resize_short}, crop_frac={args.crop_frac}")
+    print(f"  rotation_deg={args.rotation_deg}, blur_size={args.blur_size}, noise_std={args.noise_std}, brightness_max={args.brightness_max}")
     print(f"writing CSV -> {out_csv}")
 
     with out_csv.open("w", newline="") as f:
@@ -278,9 +333,32 @@ def main() -> None:
             img_clean = out_clean.images[0]
 
             # 4) For each attack: apply, detect both, write rows
-            for atk in args._attack_list:
-                img_wm_a = _apply_attack(img_wm, atk, args.jpeg_quality, args.resize_short, args.crop_frac)
-                img_clean_a = _apply_attack(img_clean, atk, args.jpeg_quality, args.resize_short, args.crop_frac)
+            for atk_idx, atk in enumerate(args._attack_list):
+                attack_seed = seed_i * 1000 + atk_idx  # same random attack for wm and clean
+                img_wm_a = _apply_attack(
+                    img_wm,
+                    atk,
+                    attack_seed,
+                    jpeg_quality=args.jpeg_quality,
+                    resize_short=args.resize_short,
+                    crop_frac=args.crop_frac,
+                    rotation_deg=args.rotation_deg,
+                    blur_size=args.blur_size,
+                    noise_std=args.noise_std,
+                    brightness_max=args.brightness_max,
+                )
+                img_clean_a = _apply_attack(
+                    img_clean,
+                    atk,
+                    attack_seed,
+                    jpeg_quality=args.jpeg_quality,
+                    resize_short=args.resize_short,
+                    crop_frac=args.crop_frac,
+                    rotation_deg=args.rotation_deg,
+                    blur_size=args.blur_size,
+                    noise_std=args.noise_std,
+                    brightness_max=args.brightness_max,
+                )
 
                 print(f"  attack={atk}: inverting watermarked ...", flush=True)
                 res_wm = _detect_tree_ring_from_pil(
@@ -311,6 +389,14 @@ def main() -> None:
                     attack_param = str(args.resize_short)
                 elif atk == "crop":
                     attack_param = str(args.crop_frac)
+                elif atk == "rotation":
+                    attack_param = str(args.rotation_deg)
+                elif atk == "blur":
+                    attack_param = str(args.blur_size)
+                elif atk == "noise":
+                    attack_param = str(args.noise_std)
+                elif atk == "color_jitter":
+                    attack_param = str(args.brightness_max)
 
                 writer.writerow(
                     [
