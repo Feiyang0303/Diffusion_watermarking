@@ -6,6 +6,6 @@ scipy>=1.7
 torch>=1.12
 torchvision>=0.13
 diffusers>=0.21
-transformers>=4.25
+transformers>=4.40
 accelerate>=0.20
 matplotlib>=3.5

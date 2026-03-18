@@ -17,6 +17,8 @@ build/
 # Checkpoints and outputs
 checkpoints/
 outputs_tree_ring/
+tree_ring_results/
+tree_ring_sd_eval/
 *.pt
 *.pth
 

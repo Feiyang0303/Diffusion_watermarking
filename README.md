@@ -130,6 +130,25 @@ python run_tests.py
 
 Or with pytest: `PYTHONPATH=.. pytest tests/ -v`
 
+### Troubleshooting: `cannot import name 'SiglipImageProcessor' from 'transformers'`
+
+If `run_tree_ring_sd_eval.py` or `run_tree_ring_sd.py` fails with this error, `diffusers` is loading code that needs a newer `transformers`. Often the interpreter is picking up an old `transformers` (e.g. from Anaconda base) instead of your venv.
+
+**Fix:** use the venv and upgrade `transformers` (4.40+ has `SiglipImageProcessor`):
+
+```bash
+source .venv/bin/activate
+pip install --upgrade "transformers>=4.40"
+# optional: reinstall deps so venv wins over system/anaconda
+pip install -r requirements.txt
+```
+
+Then run with the venv’s Python explicitly so the venv is used inside tmux/scripts:
+
+```bash
+PY=.venv/bin/python ./run_eval_gpu.sh
+```
+
 ### Train WatermarkDM encoder/decoder on GPU
 
 Requires PyTorch (and a CUDA-capable GPU for faster training). Uses synthetic data by default; replace with your dataset for real training.
