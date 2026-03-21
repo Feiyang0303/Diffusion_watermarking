@@ -35,7 +35,11 @@ Curated figures and a metrics snapshot live in **[`results/`](results/)** so vis
 **Attack montage** (one sample, watermarked image under each distortion):  
 ![](results/montage_sample0_all_attacks.png)
 
-**Numbers (snapshot):** see [`results/metrics_snapshot_n50.md`](results/metrics_snapshot_n50.md). After new runs, regenerate CSV/plots with `run_tree_ring_sd_eval.py`, `compute_sd_eval_metrics.py`, and `plot_robustness.py`, then refresh the files in `results/` (see [`results/README.md`](results/README.md)).
+**Numbers (snapshot):** see [`results/metrics_snapshot_n50.md`](results/metrics_snapshot_n50.md).
+
+**JPEG detector comparison (Q=25, n=50):** baseline (first channel) vs. updated (mean channels + `key_scale=1.0`) — [`results/jpeg_q25_detector_comparison.md`](results/jpeg_q25_detector_comparison.md).
+
+After new runs, regenerate CSV/plots with `run_tree_ring_sd_eval.py`, `compute_sd_eval_metrics.py`, and `plot_robustness.py`, then refresh the files in `results/` (see [`results/README.md`](results/README.md)).
 
 ## Structure
 

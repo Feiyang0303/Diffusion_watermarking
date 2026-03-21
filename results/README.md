@@ -9,6 +9,7 @@ This folder holds **figures and tables** meant for the GitHub landing page. Larg
 | `montage_sample0_all_attacks.png` | One sample: watermarked image under each attack (visual sanity check). |
 | `sample_clean.png` / `sample_watermarked.png` / `sample_watermarked_jpeg_q25.png` | Qualitative comparison (same prompt & seed family). |
 | `metrics_snapshot_n50.md` | Markdown table of AUC / TPR@FPR / accuracy (copy of metrics at snapshot time). |
+| `jpeg_q25_detector_comparison.md` | Baseline vs. updated JPEG detector (first vs. mean channel, n=50). |
 
 ## Reproduce
 
