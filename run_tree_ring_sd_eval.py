@@ -133,6 +133,8 @@ def _detect_tree_ring_from_pil(
     key: str,
     radius: int,
     seed: int,
+    detect_channel_agg: str,
+    key_scale: float,
 ):
     import torch
 
@@ -188,6 +190,8 @@ def _detect_tree_ring_from_pil(
         radius=radius,
         seed=seed,
         return_p_value=True,
+        channel_agg=detect_channel_agg,
+        key_scale=key_scale,
     )
     return DetectResult(
         distance=float(res["distance"]),
@@ -220,6 +224,18 @@ def main() -> None:
         "Overrides --attack; each sample is generated once then each attack is applied and detected.",
     )
     parser.add_argument("--jpeg_quality", type=int, default=25, help="JPEG quality (paper: 25)")
+    parser.add_argument(
+        "--key_scale",
+        type=float,
+        default=1.0,
+        help="Scale Tree-Ring key in Fourier mask during embed+detect (match at gen+det; try 1.08–1.2 for JPEG)",
+    )
+    parser.add_argument(
+        "--detect_channel_agg",
+        choices=["first", "mean"],
+        default="mean",
+        help="Latent channel aggregation before FFT: mean reduces inversion-noise variance (helps JPEG)",
+    )
     parser.add_argument("--resize_short", type=int, default=384, help="Short side for resize attack")
     parser.add_argument("--crop_frac", type=float, default=0.75, help="Random crop fraction (paper: 0.75)")
     parser.add_argument("--rotation_deg", type=float, default=75.0, help="Rotation angle in degrees (paper: 75)")
@@ -266,6 +282,7 @@ def main() -> None:
     print("----------------")
     print(f"num_samples={args.num_samples}, steps={args.steps}, prompt={args.prompt!r}")
     print(f"key={args.key}, radius={args.radius}, base_seed={args.seed}")
+    print(f"key_scale={args.key_scale}, detect_channel_agg={args.detect_channel_agg}")
     print(f"attacks={args._attack_list}")
     print(f"  jpeg_quality={args.jpeg_quality}, resize_short={args.resize_short}, crop_frac={args.crop_frac}")
     print(f"  rotation_deg={args.rotation_deg}, blur_size={args.blur_size}, noise_std={args.noise_std}, brightness_max={args.brightness_max}")
@@ -302,6 +319,7 @@ def main() -> None:
                 radius=args.radius,
                 seed=args.seed,  # key seed is fixed across all samples (as in paper)
                 noise_seed=seed_i,  # vary base noise per sample
+                key_scale=args.key_scale,
             )
             latents_wm = torch.from_numpy(latents_wm).unsqueeze(0).to(device).to(pipe.unet.dtype)
             latents_wm = latents_wm * pipe.scheduler.init_noise_sigma
@@ -369,6 +387,8 @@ def main() -> None:
                     key=args.key,
                     radius=args.radius,
                     seed=args.seed,
+                    detect_channel_agg=args.detect_channel_agg,
+                    key_scale=args.key_scale,
                 )
                 print(f"  attack={atk}: inverting clean ...", flush=True)
                 res_clean = _detect_tree_ring_from_pil(
@@ -379,6 +399,8 @@ def main() -> None:
                     key=args.key,
                     radius=args.radius,
                     seed=args.seed,
+                    detect_channel_agg=args.detect_channel_agg,
+                    key_scale=args.key_scale,
                 )
 
                 dt = time.time() - t0

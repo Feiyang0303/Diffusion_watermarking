@@ -106,6 +106,7 @@ def inject_watermark_noise(
     seed: Optional[int] = None,
     noise_seed: Optional[int] = None,
     num_rings: int = 4,
+    key_scale: float = 1.0,
 ) -> np.ndarray:
     """
     Create initial noise vector with Tree-Ring key in Fourier space.
@@ -118,7 +119,12 @@ def inject_watermark_noise(
         out = np.zeros(noise_shape, dtype=np.float64)
         for c in range(noise_shape[0]):
             out[c] = inject_watermark_noise(
-                (h, w), key_type=key_type, radius=radius, seed=seed, num_rings=num_rings
+                (h, w),
+                key_type=key_type,
+                radius=radius,
+                seed=seed,
+                num_rings=num_rings,
+                key_scale=key_scale,
             )
         return out
     # 2D
@@ -140,7 +146,7 @@ def inject_watermark_noise(
     # Simpler: sample real noise, FFT, replace masked coeffs with key, IFFT
     base_noise = rng.standard_normal((h, w)).astype(np.float64)
     f = _fft2(base_noise)
-    f[mask > 0] = key[mask > 0]
+    f[mask > 0] = (float(key_scale) * key[mask > 0])
     out = _ifft2(f)
     return out.astype(np.float32)
 
@@ -152,8 +158,13 @@ def inject_watermark_noise_latent(
     seed: Optional[int] = None,
     noise_seed: Optional[int] = None,
     num_rings: int = 4,
+    key_scale: float = 1.0,
 ) -> np.ndarray:
-    """(C, H, W) latent shape; inject same 2D key pattern in each channel."""
+    """(C, H, W) latent shape; inject same 2D key pattern in each channel.
+
+    key_scale: multiply key Fourier coefficients in the masked region (>1 strengthens the
+    watermark vs. inversion noise; typical JPEG-focused values are 1.05–1.25).
+    """
     c, h, w = latent_shape
     mask = _get_circular_mask(h, w, radius)
     if key_type == "zeros":
@@ -162,13 +173,14 @@ def inject_watermark_noise_latent(
         key_2d = make_key_tree_ring_rand((h, w), mask, seed=seed)
     else:
         key_2d = make_key_tree_ring_rings((h, w), mask, num_rings=num_rings, seed=seed)
+    key_write = (key_scale * key_2d).astype(np.complex128)
     # Keep key deterministic (via `seed`) while allowing per-sample base noise variation (`noise_seed`).
     rng = np.random.default_rng((noise_seed if noise_seed is not None else seed) if key_type != "rand" else None)
     out = np.zeros(latent_shape, dtype=np.float32)
     for ch in range(c):
         base = rng.standard_normal((h, w)).astype(np.float64)
         f = _fft2(base)
-        f[mask > 0] = key_2d[mask > 0]
+        f[mask > 0] = key_write[mask > 0]
         out[ch] = _ifft2(f).astype(np.float32)
     return out
 
@@ -252,15 +264,28 @@ def detect_tree_ring(
     seed: Optional[int] = None,
     num_rings: int = 4,
     return_p_value: bool = True,
+    channel_agg: Literal["first", "mean"] = "mean",
+    key_scale: float = 1.0,
 ) -> dict:
     """
     inverted_noise: (C, H, W) latent noise from DDIM inversion of generated image.
     Returns dict with 'distance', 'eta', 'p_value', 'is_watermarked' (p < 0.01).
+
+    channel_agg:
+      - "first": FFT of channel 0 only (original Tree-Ring-style usage).
+      - "mean": average all latent channels before FFT (linear SNR gain vs. per-channel inversion noise).
+
+    key_scale: must match the value used in inject_watermark_noise_latent (embeds key * key_scale).
     """
     c, h, w = inverted_noise.shape
     key, mask = build_key_for_detection((h, w), key_type, radius, seed=seed, num_rings=num_rings)
-    # Use first channel for 2D key (or average over channels)
-    inv_2d = inverted_noise[0]
+    key = key * float(key_scale)
+    if channel_agg == "first":
+        inv_2d = inverted_noise[0]
+    elif channel_agg == "mean":
+        inv_2d = inverted_noise.mean(axis=0)
+    else:
+        raise ValueError("channel_agg must be 'first' or 'mean'")
     inv_f = _fft2(inv_2d)
     dist = detection_distance(inv_f, key, mask)
     eta, sigma_sq = detection_score_eta(inv_f, key, mask)
