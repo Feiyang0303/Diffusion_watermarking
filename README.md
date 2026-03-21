@@ -37,7 +37,17 @@ Curated figures and a metrics snapshot live in **[`results/`](results/)** so vis
 
 **Numbers (snapshot):** see [`results/metrics_snapshot_n50.md`](results/metrics_snapshot_n50.md).
 
-**JPEG detector comparison (Q=25, n=50):** baseline (first channel) vs. updated (mean channels + `key_scale=1.0`) — [`results/jpeg_q25_detector_comparison.md`](results/jpeg_q25_detector_comparison.md).
+### JPEG (Q=25): detector comparison (n=50)
+
+Same attack and sample count: **JPEG quality 25**, 50 watermarked / 50 clean, SD v1.5 Tree-Ring `rings`.
+
+| Setting | Detector | AUC | TPR @ 1% FPR | TPR @ 5% FPR | Best acc |
+|---------|----------|-----|--------------|--------------|----------|
+| Baseline | First latent channel only, `key_scale=1.0` | 0.75 | 0.10 | 0.30 | 0.69 |
+| Updated | Mean over channels, `key_scale=1.0` | 0.749 | 0.06 | 0.10 | 0.70 |
+| Change (updated − baseline) | | −0.001 | −0.04 | −0.20 | +0.01 |
+
+AUC is essentially flat; **best accuracy** rises slightly; **TPR at fixed low FPR** is lower for the mean-channel run on this eval. More detail: [`results/jpeg_q25_detector_comparison.md`](results/jpeg_q25_detector_comparison.md).
 
 After new runs, regenerate CSV/plots with `run_tree_ring_sd_eval.py`, `compute_sd_eval_metrics.py`, and `plot_robustness.py`, then refresh the files in `results/` (see [`results/README.md`](results/README.md)).
 
