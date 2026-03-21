@@ -14,11 +14,14 @@ __pycache__/
 dist/
 build/
 
-# Checkpoints and outputs
+# Checkpoints and outputs (keep curated assets under results/)
 checkpoints/
 outputs_tree_ring/
+outputs_tree_ring_sd_eval/
+outputs_tree_ring_sd_eval_paper/
+outputs_tree_ring_sd_eval_jpeg_updated/
 tree_ring_results/
-tree_ring_sd_eval/
+outputs_watermark_dm/
 *.pt
 *.pth
 

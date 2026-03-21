@@ -1,5 +1,7 @@
 # Diffusion Model Watermarking
 
+**Repository:** [github.com/Feiyang0303/Diffusion_watermarking](https://github.com/Feiyang0303/Diffusion_watermarking)
+
 Implementations of two approaches from the literature:
 
 1. **Tree-Ring Watermarks** (Wen et al., arXiv:2305.20030) – training-free, invisible fingerprints in the Fourier space of the initial noise.
@@ -14,10 +16,32 @@ Implementations of two approaches from the literature:
   - *Unconditional/class-conditional:* Train encoder \(E_\phi\) and decoder \(D_\phi\) to embed a binary string in data; train the DM on watermarked data; decode with \(D_\phi\) from generated images.  
   - *Text-to-image:* Finetune a pretrained DM with a (trigger prompt, watermark image) pair and weight-constrained regularization \(\lambda \|\theta - \hat\theta\|_1\).
 
+## Results (Tree-Ring + Stable Diffusion)
+
+Curated figures and a metrics snapshot live in **[`results/`](results/)** so visitors see the evaluation without running the GPU pipeline.
+
+**Qualitative (same prompt, SD v1.5):** clean vs. watermarked vs. watermarked after JPEG Q=25.
+
+| Clean | Watermarked | Watermarked + JPEG (Q25) |
+|-------|-------------|---------------------------|
+| ![](results/sample_clean.png) | ![](results/sample_watermarked.png) | ![](results/sample_watermarked_jpeg_q25.png) |
+
+**Robustness (n=50 samples, paper-style attacks):** ROC and distance separation (watermarked vs. clean) per attack.
+
+| ROC (per attack) | Detection distance distributions |
+|------------------|--------------------------------|
+| ![](results/tree_ring_sd_n50_roc.png) | ![](results/tree_ring_sd_n50_distances.png) |
+
+**Attack montage** (one sample, watermarked image under each distortion):  
+![](results/montage_sample0_all_attacks.png)
+
+**Numbers (snapshot):** see [`results/metrics_snapshot_n50.md`](results/metrics_snapshot_n50.md). After new runs, regenerate CSV/plots with `run_tree_ring_sd_eval.py`, `compute_sd_eval_metrics.py`, and `plot_robustness.py`, then refresh the files in `results/` (see [`results/README.md`](results/README.md)).
+
 ## Structure
 
 ```
 diffusion_watermarking/
+├── results/                     # Curated figures + metrics snapshot (for README / portfolio)
 ├── tree_ring.py                 # Tree-Ring key construction, injection, detection (numpy/scipy)
 ├── watermark_dm.py              # WatermarkDM: encoder/decoder nets + text-to-image loss helpers
 ├── run_tree_ring_demo.py        # Demo Tree-Ring with numpy only (no SD)
@@ -130,25 +154,6 @@ python run_tests.py
 
 Or with pytest: `PYTHONPATH=.. pytest tests/ -v`
 
-### Troubleshooting: `cannot import name 'SiglipImageProcessor' from 'transformers'`
-
-If `run_tree_ring_sd_eval.py` or `run_tree_ring_sd.py` fails with this error, `diffusers` is loading code that needs a newer `transformers`. Often the interpreter is picking up an old `transformers` (e.g. from Anaconda base) instead of your venv.
-
-**Fix:** use the venv and upgrade `transformers` (4.40+ has `SiglipImageProcessor`):
-
-```bash
-source .venv/bin/activate
-pip install --upgrade "transformers>=4.40"
-# optional: reinstall deps so venv wins over system/anaconda
-pip install -r requirements.txt
-```
-
-Then run with the venv’s Python explicitly so the venv is used inside tmux/scripts:
-
-```bash
-PY=.venv/bin/python ./run_eval_gpu.sh
-```
-
 ### Train WatermarkDM encoder/decoder on GPU
 
 Requires PyTorch (and a CUDA-capable GPU for faster training). Uses synthetic data by default; replace with your dataset for real training.
@@ -183,33 +188,6 @@ Use `watermark_dm.py` for the binary encoder/decoder (PyTorch). Training a full 
 - Zhao et al., *A Recipe for Watermarking Diffusion Models*, arXiv:2303.10137.
 
 ---
-
-## Path on this machine
-
-Project folder (absolute path):
-
-```
-/Users/feiyangxu/Downloads/Feiyang Xu/Code/research/diffusion_watermarking
-```
-
-In Terminal: `cd "/Users/feiyangxu/Downloads/Feiyang Xu/Code/research/diffusion_watermarking"`
-
-## GitHub
-
-This repo is a Git project. To push to GitHub:
-
-1. **Create a new repo on GitHub** (e.g. `diffusion_watermarking`), leave it empty (no README).
-
-2. **From this folder:**
-   ```bash
-   cd "/Users/feiyangxu/Downloads/Feiyang Xu/Code/research/diffusion_watermarking"
-   git add .
-   git commit -m "Initial commit: Tree-Ring + WatermarkDM"
-   git branch -M main
-   git remote add origin https://github.com/YOUR_USERNAME/diffusion_watermarking.git
-   git push -u origin main
-   ```
-   Replace `YOUR_USERNAME` with your GitHub username (or use the SSH URL from GitHub).
 
 ## Running on watgpu (Linux)
 
