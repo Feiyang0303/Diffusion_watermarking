@@ -23,16 +23,13 @@
 **WatGPU folder:** `outputs_tree_ring_sd_eval_jpeg_radius/`  
 **Confirm at n=50** for r=8 and/or r=12 before strong claims.
 
-## C. Min-dist + Fourier radius (JPEG only, k=1.0)
+## C. Min-dist + Fourier radius (JPEG only, k=1.0), **all n=50**
 
-| radius | n | AUC | TPR @ 1% | TPR @ 5% | Best acc | Notes |
-|--------|---|-----|----------|----------|----------|--------|
-| 8 | 20 | 0.86 | 0.20 | 0.60 | 0.80 | Preliminary |
-| 10 | 20 | 0.83 | 0.30 | 0.30 | 0.82 | Same as §A min-dist row |
-| 12 | 50 | 0.90 | 0.26 | 0.58 | 0.85 | WatGPU `metrics_jpeg_min_dist_r12_n50` (AUC 0.9026 raw) |
+WatGPU files: `metrics_jpeg_min_dist_r8_n50.csv`, `metrics_jpeg_min_dist_r10_n50.csv`, `metrics_jpeg_min_dist_r12_n50.csv` (same folder). **All three radii** are produced by `scripts/run_jpeg_min_dist_radius_ablation.sh`.
 
-**WatGPU folder:** `outputs_tree_ring_sd_eval_jpeg_min_dist_radius/` (gitignored).  
-**Script:** `scripts/run_jpeg_min_dist_radius_ablation.sh`. If §C r=12 row is wrong radius, check which `metrics_jpeg_min_dist_r*_n50` file the paste came from.
+**Known (r=12 jpeg row):** AUC **0.90** (0.9026 raw), TPR@1% **0.26**, TPR@5% **0.58**, best acc **0.85**. For **r=8** and **r=10** n=50 numbers in the repo figure, `scp` the three CSVs into [`runs/min_dist_radius_n50/`](runs/min_dist_radius_n50/) and run `make_jpeg_approaches_table.py` (it reads them automatically).
+
+**WatGPU folder:** `outputs_tree_ring_sd_eval_jpeg_min_dist_radius/` (gitignored).
 
 ## Example commands
 
