@@ -2,6 +2,8 @@
 
 All attempts to **improve detection after JPEG compression** (defensive rate / separability), in one place.
 
+**Detailed narrative:** [`WHAT_WE_TRIED.md`](WHAT_WE_TRIED.md) · **Slide tables:** [`SLIDES.md`](SLIDES.md)
+
 ## Quick index
 
 | # | Attempt | Where artifacts live | Result (summary) |
