@@ -11,6 +11,7 @@ This folder holds **figures and tables** meant for the GitHub landing page. Larg
 | `metrics_snapshot_n50.md` | Markdown table of AUC / TPR@FPR / accuracy (copy of metrics at snapshot time). |
 | `jpeg_q25_detector_comparison.md` | Baseline vs. updated JPEG detector (first vs. mean channel, n=50). |
 | `jpeg_report_summary.png` | One-page figure: samples + JPEG metrics table (`make_jpeg_report_figure.py`). |
+| `jpeg_approaches_table.png` | Two-panel table: detector/key tweaks + radius ablation (`make_jpeg_approaches_table.py`). |
 
 **Full log of JPEG-defense experiments (mean / median / radius / k-scale):** [`../experiments/jpeg_defense/README.md`](../experiments/jpeg_defense/README.md).
 
