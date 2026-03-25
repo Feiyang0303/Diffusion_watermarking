@@ -1,5 +1,7 @@
 # JPEG (Q=25) detection: baseline vs. updated detector
 
+**Master index of all JPEG-robustness attempts:** [`experiments/jpeg_defense/README.md`](../experiments/jpeg_defense/README.md) · **Full metrics log:** [`ATTEMPTS.md`](../experiments/jpeg_defense/ATTEMPTS.md)
+
 Side-by-side metrics from **`compute_sd_eval_metrics.py`** on **n=50** watermarked / **n=50** clean pairs, **same attack** (JPEG quality 25), Stable Diffusion v1.5, Tree-Ring `rings`, radius 10, base seed 42.
 
 | Setting | Detector | AUC | TPR @ 1% FPR | TPR @ 5% FPR | Best accuracy |
@@ -23,7 +25,7 @@ So the update is **not** a uniform win on JPEG for every metric: channel averagi
 | Baseline | `detect_channel_agg=first`, `key_scale=1.0` | Snapshot table (AUC ~0.75, TPR@1% 0.10) |
 | Mean over channels | `mean`, `key_scale=1.0` | AUC ~flat; best acc +0.01; **TPR@low FPR worse** |
 | Mean + stronger key | `mean`, `key_scale=1.12` | Similar; **TPR@low FPR worse** again |
-| **Median** over channels | `median`, `key_scale=1.0` | *Run on GPU to measure* |
+| **Median** over channels | `median`, `key_scale=1.0` | n=20: AUC ~0.62 — see [`runs/median_n20/`](../experiments/jpeg_defense/runs/median_n20/) |
 | **Min distance** channel | `min_dist`, `key_scale=1.0` | *Run on GPU to measure* — picks the single channel with smallest L1 to the key (can help if JPEG hurts channels unevenly; may affect FPR) |
 
 ### Reproduce

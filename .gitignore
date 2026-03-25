@@ -20,10 +20,14 @@ outputs_tree_ring/
 outputs_tree_ring_sd_eval/
 outputs_tree_ring_sd_eval_paper/
 outputs_tree_ring_sd_eval_jpeg_updated/
+outputs_tree_ring_sd_eval_jpeg_radius/
 tree_ring_results/
 outputs_watermark_dm/
 *.pt
 *.pth
+
+# Local matplotlib cache (make_jpeg_report_figure.py)
+.mplconfig/
 
 # IDE and OS
 .idea/

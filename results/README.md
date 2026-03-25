@@ -10,6 +10,9 @@ This folder holds **figures and tables** meant for the GitHub landing page. Larg
 | `sample_clean.png` / `sample_watermarked.png` / `sample_watermarked_jpeg_q25.png` | Qualitative comparison (same prompt & seed family). |
 | `metrics_snapshot_n50.md` | Markdown table of AUC / TPR@FPR / accuracy (copy of metrics at snapshot time). |
 | `jpeg_q25_detector_comparison.md` | Baseline vs. updated JPEG detector (first vs. mean channel, n=50). |
+| `jpeg_report_summary.png` | One-page figure: samples + JPEG metrics table (`make_jpeg_report_figure.py`). |
+
+**Full log of JPEG-defense experiments (mean / median / radius / k-scale):** [`../experiments/jpeg_defense/README.md`](../experiments/jpeg_defense/README.md).
 
 ## Reproduce
 

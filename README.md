@@ -49,12 +49,15 @@ Same attack and sample count: **JPEG quality 25**, 50 watermarked / 50 clean, SD
 
 AUC is essentially flat; **best accuracy** rises slightly; **TPR at fixed low FPR** is lower for the mean-channel run on this eval. More detail: [`results/jpeg_q25_detector_comparison.md`](results/jpeg_q25_detector_comparison.md).
 
+**All attempts to improve JPEG (Q25) defense** (channel agg., key scale, radius ablation): **[`experiments/jpeg_defense/README.md`](experiments/jpeg_defense/README.md)** and **[`experiments/jpeg_defense/ATTEMPTS.md`](experiments/jpeg_defense/ATTEMPTS.md)**.
+
 After new runs, regenerate CSV/plots with `run_tree_ring_sd_eval.py`, `compute_sd_eval_metrics.py`, and `plot_robustness.py`, then refresh the files in `results/` (see [`results/README.md`](results/README.md)).
 
 ## Structure
 
 ```
 diffusion_watermarking/
+├── experiments/jpeg_defense/    # Index + metrics log for JPEG-robustness attempts; small run copies under runs/
 ├── results/                     # Curated figures + metrics snapshot (for README / portfolio)
 ├── tree_ring.py                 # Tree-Ring key construction, injection, detection (numpy/scipy)
 ├── watermark_dm.py              # WatermarkDM: encoder/decoder nets + text-to-image loss helpers
