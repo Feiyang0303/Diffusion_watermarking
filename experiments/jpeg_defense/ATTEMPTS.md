@@ -23,7 +23,7 @@
 | 12 | 20 | 0.80 | 0.20 | 0.30 | 0.78 |
 
 **WatGPU folder:** `outputs_tree_ring_sd_eval_jpeg_radius/`  
-**Confirm at n=50** for r=8 and/or r=12 before strong claims.
+**Confirm at n=50** for r=8 and/or r=12 before strong claims. For the combined approaches figure, `scp` `metrics_jpeg_radius{R}_n50.csv` into [`runs/mean_radius_n50/`](runs/mean_radius_n50/) (see README there); until then the PNG uses **n=20 ablation numbers** with **n=50** in the sample-size column.
 
 ## C. Min-dist + Fourier radius (JPEG only, k=1.0), **all n=50**
 

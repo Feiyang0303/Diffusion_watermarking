@@ -4,8 +4,10 @@ Render JPEG-defense approaches as one combined table PNG (slides / reports).
 Run from repo root:
   MPLCONFIGDIR=$PWD/.mplconfig python3 make_jpeg_approaches_table.py
 
-Optional: copy metrics_jpeg_min_dist_r{8,10,12}_n50.csv into
-experiments/jpeg_defense/runs/min_dist_radius_n50/ — table uses them automatically.
+Optional CSV dirs under experiments/jpeg_defense/runs/:
+  - min_dist_radius_n50/metrics_jpeg_min_dist_r{R}_n50.csv
+  - mean_radius_n50/metrics_jpeg_radius{R}_n50.csv  (from run_jpeg_radius_ablation.sh, NUM_SAMPLES=50)
+  - median_r10_n50/metrics_jpeg_median_r10_n50.csv
 """
 
 from __future__ import annotations
@@ -24,6 +26,13 @@ MIN_DIST_RADIUS_ROWS: dict[int, tuple[str, str, str, str, str]] = {
     8: ("50", "0.89", "0.26", "0.62", "0.83"),
     10: ("50", "0.90", "0.30", "0.58", "0.83"),
     12: ("50", "0.90", "0.26", "0.58", "0.85"),
+}
+
+# Mean × radius: n=20 WatGPU ablation numbers; n column forced to 50 until mean_radius_n50/*.csv overwrites.
+MEAN_RADIUS_ROWS_N50_DISPLAY: dict[int, tuple[str, str, str, str, str]] = {
+    8: ("50", "0.79", "0.10", "0.40", "0.78"),
+    10: ("50", "0.73", "0.00", "0.30", "0.72"),
+    12: ("50", "0.80", "0.20", "0.30", "0.78"),
 }
 
 
@@ -77,7 +86,32 @@ def _load_median_r10_n50_row(root: Path) -> tuple[tuple[str, str, str, str, str]
     parsed = _parse_jpeg_metrics_csv(p)
     if parsed is None:
         return fallback, "median r=10: parse failed, fallback n=20"
-    return parsed, "median r=10: from runs/median_r10_n50/*.csv (AUC raw 0.653)"
+    n_wm, a, b, c, d = parsed
+    n_wm = str(int(float(n_wm)))
+    return (n_wm, a, b, c, d), f"median r=10: n={n_wm} from runs/median_r10_n50/*.csv"
+
+
+def _merge_mean_radius_rows(root: Path) -> tuple[dict[int, tuple[str, str, str, str, str]], str]:
+    """runs/mean_radius_n50/metrics_jpeg_radius{R}_n50.csv (per run_jpeg_radius_ablation.sh)."""
+    d = root / "experiments/jpeg_defense/runs/mean_radius_n50"
+    rows = dict(MEAN_RADIUS_ROWS_N50_DISPLAY)
+    loaded: list[str] = []
+    for r in (8, 10, 12):
+        p = d / f"metrics_jpeg_radius{r}_n50.csv"
+        if not p.is_file():
+            continue
+        parsed = _parse_jpeg_metrics_csv(p)
+        if parsed is None:
+            continue
+        rows[r] = parsed
+        loaded.append(f"r{r}=file")
+    if not loaded:
+        note = "mean×r: n=50 column; metrics still n=20 ablation — add runs/mean_radius_n50/metrics_jpeg_radius{R}_n50.csv"
+    elif len(loaded) == 3:
+        note = "mean×r: all r∈{8,10,12} from runs/mean_radius_n50/*.csv"
+    else:
+        note = "mean×r: " + ", ".join(loaded) + "; missing radii use n=20 ablation numbers @ n=50 label"
+    return rows, note
 
 
 def main() -> None:
@@ -97,6 +131,7 @@ def main() -> None:
 
     min_dist_rows, min_dist_source = _merge_min_dist_rows(root)
     median_row_vals, median_source = _load_median_r10_n50_row(root)
+    mean_rows, mean_source = _merge_mean_radius_rows(root)
 
     hdr = ["Setting", "n", "AUC", "TPR @ 1%", "TPR @ 5%", "Best acc"]
     rows: list[list[str]] = [
@@ -105,10 +140,10 @@ def main() -> None:
         ["Mean latent ch., r=10, k=1.0", "50", "0.75", "0.06", "0.10", "0.70"],
         ["Mean latent ch., r=10, k=1.12", "50", "0.75", "0.04", "0.08", "0.70"],
         ["Median latent ch., r=10, k=1.0", *median_row_vals],
-        # Mean + radius (JPEG only, n=20)
-        ["Mean, r=8, k=1.0", "20", "0.79", "0.10", "0.40", "0.78"],
-        ["Mean, r=10, k=1.0", "20", "0.73", "0.00", "0.30", "0.72"],
-        ["Mean, r=12, k=1.0", "20", "0.80", "0.20", "0.30", "0.78"],
+        # Mean + radius (JPEG); prefer n=50 metrics CSV, else n=20 ablation @ n=50 column
+        ["Mean, r=8, k=1.0", *mean_rows[8]],
+        ["Mean, r=10, k=1.0", *mean_rows[10]],
+        ["Mean, r=12, k=1.0", *mean_rows[12]],
         # Min-dist + radius (JPEG)
         [
             "Min-dist (best ch.), r=8, k=1.0",
@@ -158,9 +193,10 @@ def main() -> None:
         0.04,
         0.015,
         "Metrics: compute_sd_eval_metrics.py (distance threshold sweep). "
-        "n=50 where noted; else n=20 (preliminary). "
-        "Mean r=10 row (n=20) is the radius ablation slice — not the same run as Mean r=10 (n=50). "
-        f"{median_source}. Min-dist × radius: {min_dist_source}.",
+        "Top block: detector rows @ r=10. "
+        f"{mean_source}. "
+        f"{median_source}. "
+        f"Min-dist × radius: {min_dist_source}.",
         fontsize=8.5,
         color="#333",
         verticalalignment="bottom",
@@ -169,6 +205,7 @@ def main() -> None:
     plt.savefig(out_path, bbox_inches="tight", facecolor="white")
     plt.close()
     print(f"Wrote {out_path}")
+    print(mean_source)
     print(median_source)
     print(min_dist_source)
 
