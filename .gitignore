@@ -21,6 +21,8 @@ outputs_tree_ring_sd_eval/
 outputs_tree_ring_sd_eval_paper/
 outputs_tree_ring_sd_eval_jpeg_updated/
 outputs_tree_ring_sd_eval_jpeg_radius/
+outputs_tree_ring_sd_eval_jpeg_min_dist_radius/
+outputs_tree_ring_sd_eval_jpeg_median_radius/
 tree_ring_results/
 outputs_watermark_dm/
 *.pt

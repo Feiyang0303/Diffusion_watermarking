@@ -10,6 +10,7 @@
 **Full radius ablation + mean/k112 CSVs** (large) stay on WatGPU / gitignored dirs:
 
 - `outputs_tree_ring_sd_eval_jpeg_radius/`
+- `outputs_tree_ring_sd_eval_jpeg_median_radius/` — median × r (n=50 script)
 - `outputs_tree_ring_sd_eval_jpeg_updated/`
 
 Copy into a new subfolder here after `scp`, e.g.:

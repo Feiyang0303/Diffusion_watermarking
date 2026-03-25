@@ -12,6 +12,7 @@ All attempts to **improve detection after JPEG compression** (defensive rate / s
 | 2 | **Mean** channels, k=1.0, n=50 | WatGPU: `outputs_tree_ring_sd_eval_jpeg_updated/sd_eval_jpeg_mean_k1.csv` | AUC ~flat; best acc +0.01; **TPR@low FPR worse** |
 | 3 | **Mean** channels, k=1.12, n=50 | WatGPU: `…/sd_eval_jpeg_mean_k112.csv` | Similar to k=1.0; strict FPR still weak |
 | 4 | **Median** channels, k=1.0, n=20 | **[`runs/median_n20/`](runs/median_n20/)** (local copy) | AUC ~0.62 @ n=20 — not better |
+| 4b | **Median** × **r ∈ {8,10,12}**, k=1.0, **n=50** | WatGPU: `outputs_tree_ring_sd_eval_jpeg_median_radius/` | Run [`run_jpeg_median_radius_ablation.sh`](../../scripts/run_jpeg_median_radius_ablation.sh) |
 | 5 | **Fourier mask radius** 8 / 10 / 12 — mean, k=1.0, n=20 | WatGPU: `outputs_tree_ring_sd_eval_jpeg_radius/` | **r=8 & 12** best AUC (~0.79–0.80); **r=10** weak on this run |
 | 6 | **Min-dist** × r, k=1.0 | **`runs/min_dist_n20/`** + `outputs_tree_ring_sd_eval_jpeg_min_dist_radius/` | **r=12, n=50:** AUC **~0.90**, TPR@1% **0.26**; r=8/10 still **n=20** in table until you paste n=50 |
 | — | **Figures / narrative** | [`results/jpeg_report_summary.png`](../../results/jpeg_report_summary.png), [`results/jpeg_q25_detector_comparison.md`](../../results/jpeg_q25_detector_comparison.md) | One-pager + baseline vs mean writeup |
@@ -30,7 +31,8 @@ experiments/jpeg_defense/
 **Large GPU outputs** stay under the repo root (gitignored) so clones stay small:
 
 - `outputs_tree_ring_sd_eval_jpeg_updated/` — mean / median / k112 runs  
-- `outputs_tree_ring_sd_eval_jpeg_radius/` — radius ablation (CSV, metrics, ROC PNGs)
+- `outputs_tree_ring_sd_eval_jpeg_radius/` — radius ablation (CSV, metrics, ROC PNGs)  
+- `outputs_tree_ring_sd_eval_jpeg_median_radius/` — **median** × radius r∈{8,10,12}, JPEG Q25
 
 Copy what you need into `runs/<name>/` for archiving or `scp` to your laptop.
 
@@ -42,8 +44,11 @@ Copy what you need into `runs/<name>/` for archiving or `scp` to your laptop.
 
 - **Min-dist + radius (r ∈ {8,10,12}):**  
   [`scripts/run_jpeg_min_dist_radius_ablation.sh`](../../scripts/run_jpeg_min_dist_radius_ablation.sh)  
-  `NUM_SAMPLES=20 bash scripts/run_jpeg_min_dist_radius_ablation.sh`  
-  Then refresh `MIN_DIST_RADIUS_ROWS` in [`make_jpeg_approaches_table.py`](../../make_jpeg_approaches_table.py) and regenerate the PNG.
+  `NUM_SAMPLES=50 bash scripts/run_jpeg_min_dist_radius_ablation.sh`
+
+- **Median + radius (r ∈ {8,10,12}), n=50:**  
+  [`scripts/run_jpeg_median_radius_ablation.sh`](../../scripts/run_jpeg_median_radius_ablation.sh)  
+  `NUM_SAMPLES=50 bash scripts/run_jpeg_median_radius_ablation.sh`
 
 - **Single JPEG eval:**  
   `run_tree_ring_sd_eval.py --attack jpeg --jpeg_quality 25 …`  

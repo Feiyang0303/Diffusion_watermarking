@@ -54,6 +54,8 @@ This document explains **in detail** every defense-oriented change we explored: 
 
 **JPEG numbers (n=20):** AUC **~0.62**, best acc **0.65**, TPR@1% **0.30**, TPR@5% **0.35** on that small run. **AUC and best acc** were **worse** than n=50 baselines; **low-FPR TPR** looks higher but **n=20** makes ROC operating points **very noisy**—not comparable to n=50 without a full rerun.
 
+**Median × mask radius (n=50):** To match the **mean** and **min-dist** radius studies, run **`NUM_SAMPLES=50 bash scripts/run_jpeg_median_radius_ablation.sh`** on WatGPU — **r ∈ {8, 10, 12}**, JPEG Q25, outputs under `outputs_tree_ring_sd_eval_jpeg_median_radius/`. Fill §D in [`ATTEMPTS.md`](ATTEMPTS.md) after metrics land.
+
 ---
 
 ## 6. Min-distance channel (`channel_agg=min_dist`)
