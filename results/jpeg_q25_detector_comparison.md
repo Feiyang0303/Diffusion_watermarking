@@ -26,7 +26,7 @@ So the update is **not** a uniform win on JPEG for every metric: channel averagi
 | Mean over channels | `mean`, `key_scale=1.0` | AUC ~flat; best acc +0.01; **TPR@low FPR worse** |
 | Mean + stronger key | `mean`, `key_scale=1.12` | Similar; **TPR@low FPR worse** again |
 | **Median** over channels | `median`, `key_scale=1.0` | n=20: AUC ~0.62 — see [`runs/median_n20/`](../experiments/jpeg_defense/runs/median_n20/) |
-| **Min distance** channel | `min_dist`, `key_scale=1.0` | *Run on GPU to measure* — picks the single channel with smallest L1 to the key (can help if JPEG hurts channels unevenly; may affect FPR) |
+| **Min distance** channel | `min_dist`, `key_scale=1.0` | **n=20:** r=10 AUC **0.83** — [`runs/min_dist_n20/`](../experiments/jpeg_defense/runs/min_dist_n20/). **r=8:** AUC **~0.86** (n=20). **r=12 n=50:** AUC **~0.90**, TPR@1% **0.26**, TPR@5% **0.58** — see [`ATTEMPTS.md`](../experiments/jpeg_defense/ATTEMPTS.md) §C; verify paste matches `metrics_jpeg_min_dist_r12_n50`; best-of-4 may affect FPR |
 
 ### Reproduce
 
