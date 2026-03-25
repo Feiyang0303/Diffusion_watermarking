@@ -16,6 +16,16 @@ Side-by-side metrics from **`compute_sd_eval_metrics.py`** on **n=50** watermark
 
 So the update is **not** a uniform win on JPEG for every metric: channel averaging changes the **distance distribution** and moves the best operating point. Try **`--key_scale` > 1** (e.g. 1.12) on a fresh eval if the goal is higher TPR at fixed FPR.
 
+### Approaches tried (JPEG-focused)
+
+| Idea | CLI / code | Outcome (your n=50 JPEG runs) |
+|------|------------|----------------------------------|
+| Baseline | `detect_channel_agg=first`, `key_scale=1.0` | Snapshot table (AUC ~0.75, TPR@1% 0.10) |
+| Mean over channels | `mean`, `key_scale=1.0` | AUC ~flat; best acc +0.01; **TPR@low FPR worse** |
+| Mean + stronger key | `mean`, `key_scale=1.12` | Similar; **TPR@low FPR worse** again |
+| **Median** over channels | `median`, `key_scale=1.0` | *Run on GPU to measure* |
+| **Min distance** channel | `min_dist`, `key_scale=1.0` | *Run on GPU to measure* — picks the single channel with smallest L1 to the key (can help if JPEG hurts channels unevenly; may affect FPR) |
+
 ### Reproduce
 
 **Baseline row:** from the multi-attack n=50 run (`sd_eval_n50.csv`); JPEG row in [`metrics_snapshot_n50.md`](metrics_snapshot_n50.md).
@@ -23,5 +33,7 @@ So the update is **not** a uniform win on JPEG for every metric: channel averagi
 **Updated row:** WatGPU run  
 `run_tree_ring_sd_eval.py --num_samples 50 --attack jpeg --jpeg_quality 25 --detect_channel_agg mean --key_scale 1.0 …`  
 → `compute_sd_eval_metrics.py --csv …/sd_eval_jpeg_mean_k1.csv --out_prefix metrics_jpeg_mean_k1`
+
+**New aggregators (median / min_dist):** same command, replace `--detect_channel_agg` with `median` or `min_dist`, use a fresh `--out_csv` name, then `compute_sd_eval_metrics.py` as above.
 
 *Numbers rounded for display; baseline AUC/TPR from frozen snapshot table; updated row from `metrics_jpeg_mean_k1` summary (AUC 0.7494).*

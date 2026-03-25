@@ -72,3 +72,24 @@ class TestTreeRing(unittest.TestCase):
         key, mask = build_key_for_detection((h, w), "rings", r, seed=42)
         self.assertEqual(key.shape, (h, w))
         self.assertEqual(mask.shape, (h, w))
+
+    def test_detect_median_min_dist_rings(self):
+        """Median and min_dist aggregation should still detect injected rings noise."""
+        latent_shape = (4, 64, 64)
+        noise = inject_watermark_noise_latent(
+            latent_shape, key_type="rings", radius=10, seed=42
+        )
+        for agg in ("median", "min_dist"):
+            result = detect_tree_ring(
+                noise, key_type="rings", radius=10, seed=42, return_p_value=True, channel_agg=agg
+            )
+            rng = np.random.default_rng(99)
+            random_noise = rng.standard_normal(latent_shape).astype(np.float32)
+            result_rand = detect_tree_ring(
+                random_noise, key_type="rings", radius=10, seed=42, return_p_value=True, channel_agg=agg
+            )
+            self.assertLess(
+                result["distance"],
+                result_rand["distance"],
+                f"Watermarked should beat random with channel_agg={agg}",
+            )

@@ -232,9 +232,9 @@ def main() -> None:
     )
     parser.add_argument(
         "--detect_channel_agg",
-        choices=["first", "mean"],
+        choices=["first", "mean", "median", "min_dist"],
         default="mean",
-        help="Latent channel aggregation before FFT: mean reduces inversion-noise variance (helps JPEG)",
+        help="Channel handling: mean/median aggregate in space then FFT; min_dist = best L1 match over channels",
     )
     parser.add_argument("--resize_short", type=int, default=384, help="Short side for resize attack")
     parser.add_argument("--crop_frac", type=float, default=0.75, help="Random crop fraction (paper: 0.75)")

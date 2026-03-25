@@ -264,7 +264,7 @@ def detect_tree_ring(
     seed: Optional[int] = None,
     num_rings: int = 4,
     return_p_value: bool = True,
-    channel_agg: Literal["first", "mean"] = "mean",
+    channel_agg: Literal["first", "mean", "median", "min_dist"] = "mean",
     key_scale: float = 1.0,
 ) -> dict:
     """
@@ -274,22 +274,45 @@ def detect_tree_ring(
     channel_agg:
       - "first": FFT of channel 0 only (original Tree-Ring-style usage).
       - "mean": average all latent channels before FFT (linear SNR gain vs. per-channel inversion noise).
+      - "median": per-pixel median across channels before FFT (robust if one channel is corrupted, e.g. JPEG).
+      - "min_dist": per channel, FFT then L1 distance to key; take the *minimum* distance and use that
+        channel's eta/p_value (best single-channel match).
 
     key_scale: must match the value used in inject_watermark_noise_latent (embeds key * key_scale).
     """
     c, h, w = inverted_noise.shape
     key, mask = build_key_for_detection((h, w), key_type, radius, seed=seed, num_rings=num_rings)
     key = key * float(key_scale)
-    if channel_agg == "first":
-        inv_2d = inverted_noise[0]
-    elif channel_agg == "mean":
-        inv_2d = inverted_noise.mean(axis=0)
-    else:
-        raise ValueError("channel_agg must be 'first' or 'mean'")
-    inv_f = _fft2(inv_2d)
-    dist = detection_distance(inv_f, key, mask)
-    eta, sigma_sq = detection_score_eta(inv_f, key, mask)
     mask_size = int(mask.sum())
+
+    if channel_agg == "min_dist":
+        dists = []
+        etas = []
+        sigmas = []
+        for ch in range(c):
+            inv_f = _fft2(inverted_noise[ch])
+            dists.append(detection_distance(inv_f, key, mask))
+            eta, sigma_sq = detection_score_eta(inv_f, key, mask)
+            etas.append(eta)
+            sigmas.append(sigma_sq)
+        idx = int(np.argmin(dists))
+        inv_f = _fft2(inverted_noise[idx])
+        dist = float(dists[idx])
+        eta = float(etas[idx])
+        sigma_sq = float(sigmas[idx])
+    else:
+        if channel_agg == "first":
+            inv_2d = inverted_noise[0]
+        elif channel_agg == "mean":
+            inv_2d = inverted_noise.mean(axis=0)
+        elif channel_agg == "median":
+            inv_2d = np.median(inverted_noise, axis=0)
+        else:
+            raise ValueError("channel_agg must be 'first', 'mean', 'median', or 'min_dist'")
+        inv_f = _fft2(inv_2d)
+        dist = detection_distance(inv_f, key, mask)
+        eta, sigma_sq = detection_score_eta(inv_f, key, mask)
+
     p_val = p_value_tree_ring(eta, mask_size, key, mask, sigma_sq) if return_p_value else None
     is_watermarked = p_val is not None and not np.isnan(p_val) and p_val < 0.01
     if p_val is None or np.isnan(p_val):
