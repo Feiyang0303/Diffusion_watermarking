@@ -2,7 +2,7 @@
 
 All attempts to **improve detection after JPEG compression** (defensive rate / separability), in one place.
 
-**Detailed narrative:** [`WHAT_WE_TRIED.md`](WHAT_WE_TRIED.md) · **Slide tables:** [`SLIDES.md`](SLIDES.md) · **Table as PNG:** [`results/jpeg_approaches_table.png`](../results/jpeg_approaches_table.png) (regenerate: `make_jpeg_approaches_table.py`)
+**Detailed narrative:** [`WHAT_I_TRIED.md`](WHAT_I_TRIED.md) · **Slide tables:** [`SLIDES.md`](SLIDES.md) · **Table as PNG:** [`results/jpeg_approaches_table.png`](../results/jpeg_approaches_table.png) (regenerate: `make_jpeg_approaches_table.py`)
 
 ## Quick index
 
