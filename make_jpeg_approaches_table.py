@@ -27,32 +27,43 @@ MIN_DIST_RADIUS_ROWS: dict[int, tuple[str, str, str, str, str]] = {
 }
 
 
-def _load_min_dist_n50_from_csv(root: Path) -> dict[int, tuple[str, str, str, str, str]] | None:
-    """If all three metrics CSVs exist, return rows from the jpeg line; else None."""
+def _parse_min_dist_metrics_csv(path: Path) -> tuple[str, str, str, str, str] | None:
+    """Return (n_wm, auc, tpr1, tpr5, best_acc) from the jpeg row, or None."""
+    with open(path, newline="") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            if (row.get("attack") or "").strip() != "jpeg":
+                continue
+            n_wm = int(float(row["n_wm"]))
+            return (
+                str(n_wm),
+                f"{float(row['auc']):.2f}",
+                f"{float(row['tpr_at_1pct_fpr']):.2f}",
+                f"{float(row['tpr_at_5pct_fpr']):.2f}",
+                f"{float(row['best_accuracy']):.2f}",
+            )
+    return None
+
+
+def _merge_min_dist_rows(root: Path) -> tuple[dict[int, tuple[str, str, str, str, str]], str]:
+    """Overlay runs/min_dist_radius_n50/metrics_jpeg_min_dist_r{R}_n50.csv onto fallback (per radius)."""
     d = root / "experiments/jpeg_defense/runs/min_dist_radius_n50"
-    out: dict[int, tuple[str, str, str, str, str]] = {}
+    rows = dict(MIN_DIST_RADIUS_ROWS)
+    loaded: list[str] = []
     for r in (8, 10, 12):
         p = d / f"metrics_jpeg_min_dist_r{r}_n50.csv"
         if not p.is_file():
-            return None
-        with open(p, newline="") as f:
-            reader = csv.DictReader(f)
-            jpeg = None
-            for row in reader:
-                if (row.get("attack") or "").strip() == "jpeg":
-                    jpeg = row
-                    break
-        if jpeg is None:
-            return None
-        n_wm = int(float(jpeg["n_wm"]))
-        out[r] = (
-            str(n_wm),
-            f"{float(jpeg['auc']):.2f}",
-            f"{float(jpeg['tpr_at_1pct_fpr']):.2f}",
-            f"{float(jpeg['tpr_at_5pct_fpr']):.2f}",
-            f"{float(jpeg['best_accuracy']):.2f}",
-        )
-    return out
+            continue
+        parsed = _parse_min_dist_metrics_csv(p)
+        if parsed is None:
+            continue
+        rows[r] = parsed
+        loaded.append(f"r{r}=file")
+    if not loaded:
+        note = "fallback MIN_DIST_RADIUS_ROWS (scp metrics CSVs → runs/min_dist_radius_n50/; do not quote {8,10,12})"
+    else:
+        note = "min-dist: " + ", ".join(loaded) + "; other radii fallback"
+    return rows, note
 
 
 def main() -> None:
@@ -70,13 +81,7 @@ def main() -> None:
     out_path = root / args.out
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
-    loaded = _load_min_dist_n50_from_csv(root)
-    min_dist_rows = loaded or MIN_DIST_RADIUS_ROWS
-    min_dist_source = (
-        "all n=50 from experiments/jpeg_defense/runs/min_dist_radius_n50/*.csv"
-        if loaded
-        else "fallback MIN_DIST_RADIUS_ROWS in script (scp 3× CSVs to runs/min_dist_radius_n50/)"
-    )
+    min_dist_rows, min_dist_source = _merge_min_dist_rows(root)
 
     hdr = ["Setting", "n", "AUC", "TPR @ 1%", "TPR @ 5%", "Best acc"]
     rows: list[list[str]] = [
@@ -149,6 +154,7 @@ def main() -> None:
     plt.savefig(out_path, bbox_inches="tight", facecolor="white")
     plt.close()
     print(f"Wrote {out_path}")
+    print(min_dist_source)
 
 
 if __name__ == "__main__":

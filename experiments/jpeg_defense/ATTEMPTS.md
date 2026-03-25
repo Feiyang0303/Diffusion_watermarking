@@ -27,7 +27,7 @@
 
 WatGPU files: `metrics_jpeg_min_dist_r8_n50.csv`, `metrics_jpeg_min_dist_r10_n50.csv`, `metrics_jpeg_min_dist_r12_n50.csv` (same folder). **All three radii** are produced by `scripts/run_jpeg_min_dist_radius_ablation.sh`.
 
-**Known (r=12 jpeg row):** AUC **0.90** (0.9026 raw), TPR@1% **0.26**, TPR@5% **0.58**, best acc **0.85**. For **r=8** and **r=10** n=50 numbers in the repo figure, `scp` the three CSVs into [`runs/min_dist_radius_n50/`](runs/min_dist_radius_n50/) and run `make_jpeg_approaches_table.py` (it reads them automatically).
+**In-repo:** [`runs/min_dist_radius_n50/metrics_jpeg_min_dist_r12_n50.csv`](runs/min_dist_radius_n50/metrics_jpeg_min_dist_r12_n50.csv) (jpeg row: AUC **0.90**, TPR@1% **0.26**, TPR@5% **0.58**, best acc **0.85**). **r=8 / r=10:** `scp` those metrics CSVs into the same folder (**unquoted** `r{8,10,12}` on zsh — see README there), then `make_jpeg_approaches_table.py` merges each radius independently.
 
 **WatGPU folder:** `outputs_tree_ring_sd_eval_jpeg_min_dist_radius/` (gitignored).
 
