@@ -54,7 +54,9 @@ This document explains **in detail** every defense-oriented change we explored: 
 
 **JPEG numbers (n=20):** AUC **~0.62**, best acc **0.65**, TPR@1% **0.30**, TPR@5% **0.35** on that small run. **AUC and best acc** were **worse** than n=50 baselines; **low-FPR TPR** looks higher but **n=20** makes ROC operating points **very noisy**—not comparable to n=50 without a full rerun.
 
-**Median × mask radius (n=50):** To match the **mean** and **min-dist** radius studies, run **`NUM_SAMPLES=50 bash scripts/run_jpeg_median_radius_ablation.sh`** on WatGPU — **r ∈ {8, 10, 12}**, JPEG Q25, outputs under `outputs_tree_ring_sd_eval_jpeg_median_radius/`. Fill §D in [`ATTEMPTS.md`](ATTEMPTS.md) after metrics land.
+**JPEG numbers (n=50, r=10):** AUC **~0.65** (0.653 raw), TPR@1% **0.24**, TPR@5% **0.32**, best acc **0.65** — [`runs/median_r10_n50/`](runs/median_r10_n50/). Still **below** first-channel baseline (~0.75 AUC) on JPEG Q25.
+
+**Median × mask radius (n=50):** Full sweep: **`NUM_SAMPLES=50 bash scripts/run_jpeg_median_radius_ablation.sh`** — **r ∈ {8, 10, 12}**, outputs under `outputs_tree_ring_sd_eval_jpeg_median_radius/`. Update §D in [`ATTEMPTS.md`](ATTEMPTS.md) when r=8 / r=12 metrics arrive.
 
 ---
 
@@ -103,11 +105,12 @@ On this **preliminary** slice, **r = 8** and **r = 12** look **better** than **r
 | Mean vs. first channel | Tiny **best-acc** gain; **worse TPR @ low FPR** |
 | key_scale 1.12 + mean | **No** improvement on strict metrics |
 | Median (n=20) | **Worse AUC** vs. n=50 settings; noisy |
+| Median (n=50, r=10) | AUC **~0.65** — still **below** baseline **~0.75**; not a JPEG win |
 | Radius 8 vs 10 vs 12 (n=20) | **Promising**; needs **n=50** confirmation |
 | Min-dist + r=12 (n=50) | **Strong** AUC **~0.90** vs. baseline **~0.75**; still check **FPR** (best-of-4) |
 
-**Honest story for a report:** We systematically tried **detector pooling** (first / mean / median / **min-dist**), **key strength**, and **mask radius** under **JPEG Q25**. **Mean/median + key scaling** did not clearly improve **JPEG defense** under **strict FPR** at n=50. **Min-dist** with **r=12** at **n=50** is the clearest win so far on **AUC**; **mean × radius** and **min-dist × radius** at n=20 suggested **r** matters — confirm **min-dist r=8/10 at n=50** if you need a full radius sweep at fixed n.
+**Honest story for a report:** We systematically tried **detector pooling** (first / mean / median / **min-dist**), **key strength**, and **mask radius** under **JPEG Q25**. **Mean** and **median** (including **median n=50, r=10**) did not beat the **first-channel baseline** on **AUC** for JPEG. **Min-dist** with **r=12** at **n=50** is the clearest win so far on **AUC**; **mean × radius** and **min-dist × radius** at n=20 suggested **r** matters — finish **median × r** at n=50 for r=8/12 if you want symmetry with mean/min-dist sweeps.
 
 ---
 
-See also: [`SLIDES.md`](SLIDES.md) (compact tables), [`ATTEMPTS.md`](ATTEMPTS.md) (raw numbers).
+See also: [`ATTEMPTS.md`](ATTEMPTS.md) (raw numbers).

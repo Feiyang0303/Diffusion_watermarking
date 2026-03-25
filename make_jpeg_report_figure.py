@@ -7,6 +7,7 @@ Run from repo root: python make_jpeg_report_figure.py
 from __future__ import annotations
 
 import argparse
+import csv
 from pathlib import Path
 
 import matplotlib
@@ -34,13 +35,28 @@ def main() -> None:
     parser.add_argument(
         "--median_n_column",
         type=str,
-        default="20",
+        default="50",
         choices=("20", "50"),
-        help="Sample count shown for median row. Use 20 (actual run). Use 50 only after re-running median with --num_samples 50.",
+        help="Sample count for median row if CSV missing (default 50 after WatGPU n=50 run).",
     )
     args = parser.parse_args()
 
     root = Path(__file__).resolve().parent
+    median_csv = root / "experiments/jpeg_defense/runs/median_r10_n50/metrics_jpeg_median_r10_n50.csv"
+    median_n = args.median_n_column
+    median_cells = ["0.62", "0.30", "0.35", "0.65"]
+    if median_csv.is_file():
+        with open(median_csv, newline="") as f:
+            for row in csv.DictReader(f):
+                if (row.get("attack") or "").strip() == "jpeg":
+                    median_n = str(int(float(row["n_wm"])))
+                    median_cells = [
+                        f"{float(row['auc']):.2f}",
+                        f"{float(row['tpr_at_1pct_fpr']):.2f}",
+                        f"{float(row['tpr_at_5pct_fpr']):.2f}",
+                        f"{float(row['best_accuracy']):.2f}",
+                    ]
+                    break
     res = root / args.results_dir
     out_path = root / args.out
     out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -71,15 +87,15 @@ def main() -> None:
 
     # --- Metrics table (numbers from your WatGPU / snapshot runs) ---
     col_labels = ["Setting", "n", "AUC", "TPR @ 1%", "TPR @ 5%", "Best acc"]
-    median_n = args.median_n_column
     cell_text = [
         ["First channel (baseline)", "50", "0.75", "0.10", "0.30", "0.69"],
         ["Mean agg., key_scale=1.0", "50", "0.75", "0.06", "0.10", "0.70"],
         ["Mean agg., key_scale=1.12", "50", "0.75", "0.04", "0.08", "0.70"],
-        ["Median agg., key_scale=1.0", median_n, "0.62", "0.30", "0.35", "0.65"],
+        ["Median agg., key_scale=1.0", median_n, *median_cells],
+        ["Min-dist channel, key_scale=1.0", "50", "0.90", "0.26", "0.58", "0.85"],
     ]
 
-    ax_tbl = fig.add_axes([0.08, 0.12, 0.84, 0.38])
+    ax_tbl = fig.add_axes([0.08, 0.10, 0.84, 0.40])
     ax_tbl.set_axis_off()
     table: Table = ax_tbl.table(
         cellText=cell_text,
@@ -89,7 +105,7 @@ def main() -> None:
     )
     table.auto_set_font_size(False)
     table.set_fontsize(10)
-    table.scale(1.05, 2.2)
+    table.scale(1.05, 1.95)
     for (row, col), cell in table.get_celld().items():
         if row == 0:
             cell.set_facecolor("#2c3e50")
@@ -98,14 +114,10 @@ def main() -> None:
             cell.set_facecolor("#f8f9fa" if row % 2 else "white")
 
     median_note = (
-        "Median row: n=20 (a dagger after 20 looked like '201' in some PNG fonts). Other rows: n=50.\n"
-        "For the same n everywhere, re-run median with --num_samples 50, refresh metrics, then use --median_n_column 50 and paste new AUC/TPR/acc into the script."
+        "Median: r=10 from runs/median_r10_n50/metrics CSV when present (else --median_n_column + legacy n=20 numbers). "
+        "Min-dist row: r=12 n=50 snapshot (best-of-4 channels; may affect FPR).\n"
+        "Other rows: n=50 baselines / mean runs."
     )
-    if median_n == "50":
-        median_note = (
-            "WARNING: n column shows 50 for median, but AUC/TPR/acc above are still from the n=20 median run — replace after you re-run at n=50.\n"
-            + median_note
-        )
     fig.text(
         0.08,
         0.06,

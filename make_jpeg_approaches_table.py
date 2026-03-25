@@ -21,13 +21,13 @@ import matplotlib.pyplot as plt  # noqa: E402
 
 # Fallback when runs/min_dist_radius_n50/*.csv are missing (mixed n=20 / n=50).
 MIN_DIST_RADIUS_ROWS: dict[int, tuple[str, str, str, str, str]] = {
-    8: ("20", "0.86", "0.20", "0.60", "0.80"),
-    10: ("20", "0.83", "0.30", "0.30", "0.82"),
+    8: ("50", "0.89", "0.26", "0.62", "0.83"),
+    10: ("50", "0.90", "0.30", "0.58", "0.83"),
     12: ("50", "0.90", "0.26", "0.58", "0.85"),
 }
 
 
-def _parse_min_dist_metrics_csv(path: Path) -> tuple[str, str, str, str, str] | None:
+def _parse_jpeg_metrics_csv(path: Path) -> tuple[str, str, str, str, str] | None:
     """Return (n_wm, auc, tpr1, tpr5, best_acc) from the jpeg row, or None."""
     with open(path, newline="") as f:
         reader = csv.DictReader(f)
@@ -54,16 +54,30 @@ def _merge_min_dist_rows(root: Path) -> tuple[dict[int, tuple[str, str, str, str
         p = d / f"metrics_jpeg_min_dist_r{r}_n50.csv"
         if not p.is_file():
             continue
-        parsed = _parse_min_dist_metrics_csv(p)
+        parsed = _parse_jpeg_metrics_csv(p)
         if parsed is None:
             continue
         rows[r] = parsed
         loaded.append(f"r{r}=file")
     if not loaded:
         note = "fallback MIN_DIST_RADIUS_ROWS (scp metrics CSVs → runs/min_dist_radius_n50/; do not quote {8,10,12})"
+    elif len(loaded) == 3:
+        note = "min-dist: all r∈{8,10,12} from runs/min_dist_radius_n50/*.csv"
     else:
-        note = "min-dist: " + ", ".join(loaded) + "; other radii fallback"
+        note = "min-dist: " + ", ".join(loaded) + "; missing radii use script fallback"
     return rows, note
+
+
+def _load_median_r10_n50_row(root: Path) -> tuple[tuple[str, str, str, str, str], str]:
+    """Median, r=10, k=1.0 from runs/median_r10_n50/metrics_jpeg_median_r10_n50.csv if present."""
+    p = root / "experiments/jpeg_defense/runs/median_r10_n50/metrics_jpeg_median_r10_n50.csv"
+    fallback = ("20", "0.62", "0.30", "0.35", "0.65")
+    if not p.is_file():
+        return fallback, "median r=10: fallback n=20 slice"
+    parsed = _parse_jpeg_metrics_csv(p)
+    if parsed is None:
+        return fallback, "median r=10: parse failed, fallback n=20"
+    return parsed, "median r=10: from runs/median_r10_n50/*.csv (AUC raw 0.653)"
 
 
 def main() -> None:
@@ -82,6 +96,7 @@ def main() -> None:
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
     min_dist_rows, min_dist_source = _merge_min_dist_rows(root)
+    median_row_vals, median_source = _load_median_r10_n50_row(root)
 
     hdr = ["Setting", "n", "AUC", "TPR @ 1%", "TPR @ 5%", "Best acc"]
     rows: list[list[str]] = [
@@ -89,7 +104,7 @@ def main() -> None:
         ["First channel (baseline), r=10, k=1.0", "50", "0.75", "0.10", "0.30", "0.69"],
         ["Mean latent ch., r=10, k=1.0", "50", "0.75", "0.06", "0.10", "0.70"],
         ["Mean latent ch., r=10, k=1.12", "50", "0.75", "0.04", "0.08", "0.70"],
-        ["Median latent ch., r=10, k=1.0", "20", "0.62", "0.30", "0.35", "0.65"],
+        ["Median latent ch., r=10, k=1.0", *median_row_vals],
         # Mean + radius (JPEG only, n=20)
         ["Mean, r=8, k=1.0", "20", "0.79", "0.10", "0.40", "0.78"],
         ["Mean, r=10, k=1.0", "20", "0.73", "0.00", "0.30", "0.72"],
@@ -145,7 +160,7 @@ def main() -> None:
         "Metrics: compute_sd_eval_metrics.py (distance threshold sweep). "
         "n=50 where noted; else n=20 (preliminary). "
         "Mean r=10 row (n=20) is the radius ablation slice — not the same run as Mean r=10 (n=50). "
-        f"Min-dist × radius: {min_dist_source}.",
+        f"{median_source}. Min-dist × radius: {min_dist_source}.",
         fontsize=8.5,
         color="#333",
         verticalalignment="bottom",
@@ -154,6 +169,7 @@ def main() -> None:
     plt.savefig(out_path, bbox_inches="tight", facecolor="white")
     plt.close()
     print(f"Wrote {out_path}")
+    print(median_source)
     print(min_dist_source)
 
 

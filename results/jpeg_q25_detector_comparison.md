@@ -25,7 +25,7 @@ So the update is **not** a uniform win on JPEG for every metric: channel averagi
 | Baseline | `detect_channel_agg=first`, `key_scale=1.0` | Snapshot table (AUC ~0.75, TPR@1% 0.10) |
 | Mean over channels | `mean`, `key_scale=1.0` | AUC ~flat; best acc +0.01; **TPR@low FPR worse** |
 | Mean + stronger key | `mean`, `key_scale=1.12` | Similar; **TPR@low FPR worse** again |
-| **Median** over channels | `median`, `key_scale=1.0` | n=20: AUC ~0.62 — see [`runs/median_n20/`](../experiments/jpeg_defense/runs/median_n20/) |
+| **Median** over channels | `median`, `key_scale=1.0` | n=20: AUC ~0.62 — [`runs/median_n20/`](../experiments/jpeg_defense/runs/median_n20/). **n=50, r=10:** AUC **~0.65**, TPR@1% **0.24** — [`runs/median_r10_n50/`](../experiments/jpeg_defense/runs/median_r10_n50/) |
 | **Min distance** channel | `min_dist`, `key_scale=1.0` | **n=20:** r=10 AUC **0.83** — [`runs/min_dist_n20/`](../experiments/jpeg_defense/runs/min_dist_n20/). **r=8:** AUC **~0.86** (n=20). **r=12 n=50:** AUC **~0.90**, TPR@1% **0.26**, TPR@5% **0.58** — see [`ATTEMPTS.md`](../experiments/jpeg_defense/ATTEMPTS.md) §C; verify paste matches `metrics_jpeg_min_dist_r12_n50`; best-of-4 may affect FPR |
 
 ### Reproduce

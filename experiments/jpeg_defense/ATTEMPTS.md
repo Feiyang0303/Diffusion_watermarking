@@ -10,7 +10,8 @@
 | Mean | 50 | `mean`, k=1.0 | 0.749 | 0.06 | 0.10 | 0.70 | JPEG-only CSV |
 | Mean | 50 | `mean`, k=1.12 | 0.747 | 0.04 | 0.08 | 0.70 | JPEG-only CSV |
 | Median, r=10 | 20 | `median`, k=1.0 | 0.62 | 0.30 | 0.35 | 0.65 | [`runs/median_n20/`](runs/median_n20/) |
-| Median × r | 50 | `median`, k=1.0, r∈{8,10,12} | — | — | — | — | Run `scripts/run_jpeg_median_radius_ablation.sh`; see §D |
+| Median, r=10 | 50 | `median`, k=1.0 | 0.65 | 0.24 | 0.32 | 0.65 | AUC 0.653 raw — [`runs/median_r10_n50/`](runs/median_r10_n50/) |
+| Median × r (full sweep) | 50 | `median`, k=1.0, r∈{8,10,12} | — | — | — | — | `run_jpeg_median_radius_ablation.sh`; see §D |
 | Min-dist, r=10 | 20 | `min_dist`, k=1.0 | 0.83 | 0.30 | 0.30 | 0.82 | [`runs/min_dist_n20/`](runs/min_dist_n20/) |
 
 ## B. Fourier mask radius (JPEG only, mean, k=1.0)
@@ -28,7 +29,7 @@
 
 WatGPU files: `metrics_jpeg_min_dist_r8_n50.csv`, `metrics_jpeg_min_dist_r10_n50.csv`, `metrics_jpeg_min_dist_r12_n50.csv` (same folder). **All three radii** are produced by `scripts/run_jpeg_min_dist_radius_ablation.sh`.
 
-**In-repo:** [`runs/min_dist_radius_n50/metrics_jpeg_min_dist_r12_n50.csv`](runs/min_dist_radius_n50/metrics_jpeg_min_dist_r12_n50.csv) (jpeg row: AUC **0.90**, TPR@1% **0.26**, TPR@5% **0.58**, best acc **0.85**). **r=8 / r=10:** `scp` those metrics CSVs into the same folder (**unquoted** `r{8,10,12}` on zsh — see README there), then `make_jpeg_approaches_table.py` merges each radius independently.
+**In-repo:** [`runs/min_dist_radius_n50/`](runs/min_dist_radius_n50/) — `metrics_jpeg_min_dist_r{8,10,12}_n50.csv`. **r=8:** AUC **0.89** (0.8928 raw), TPR@1% **0.26**, TPR@5% **0.62**, best acc **0.83**. **r=10:** AUC **0.90** (0.8966 raw), TPR@1% **0.30**, TPR@5% **0.58**, best acc **0.83**. **r=12:** AUC **0.90** (0.9026 raw), TPR@1% **0.26**, TPR@5% **0.58**, best acc **0.85**.
 
 **WatGPU folder:** `outputs_tree_ring_sd_eval_jpeg_min_dist_radius/` (gitignored).
 
@@ -36,9 +37,9 @@ WatGPU files: `metrics_jpeg_min_dist_r8_n50.csv`, `metrics_jpeg_min_dist_r10_n50
 
 | radius | n | AUC | TPR @ 1% | TPR @ 5% | Best acc | Notes |
 |--------|---|-----|----------|----------|----------|--------|
-| 8 | 50 | — | — | — | — | After WatGPU: `metrics_jpeg_median_r8_n50.csv` |
-| 10 | 50 | — | — | — | — | Same folder |
-| 12 | 50 | — | — | — | — | Same folder |
+| 8 | 50 | — | — | — | — | `metrics_jpeg_median_r8_n50.csv` |
+| 10 | 50 | 0.65 | 0.24 | 0.32 | 0.65 | Matches [`runs/median_r10_n50/metrics_jpeg_median_r10_n50.csv`](runs/median_r10_n50/metrics_jpeg_median_r10_n50.csv) (AUC 0.653 raw) |
+| 12 | 50 | — | — | — | — | `metrics_jpeg_median_r12_n50.csv` |
 
 **WatGPU folder:** `outputs_tree_ring_sd_eval_jpeg_median_radius/` (gitignored).  
 **Script:** `NUM_SAMPLES=50 bash scripts/run_jpeg_median_radius_ablation.sh`
