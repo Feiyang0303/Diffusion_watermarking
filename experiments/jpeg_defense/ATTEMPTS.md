@@ -44,6 +44,39 @@ WatGPU files: `metrics_jpeg_min_dist_r8_n50.csv`, `metrics_jpeg_min_dist_r10_n50
 **WatGPU folder:** `outputs_tree_ring_sd_eval_jpeg_median_radius/` (gitignored).  
 **Script:** `NUM_SAMPLES=50 bash scripts/run_jpeg_median_radius_ablation.sh`
 
+## E. Min-dist × JPEG quality sweep (k=1.0, n=50)
+
+How does `min_dist` detection hold up under varying JPEG compression strength?
+Sweeps Q∈{10,15,25,50,75} × R∈{8,10,12}. Lower quality = more aggressive compression.
+
+**Script:** `NUM_SAMPLES=50 bash scripts/run_jpeg_quality_sweep.sh`  
+**In-repo:** [`runs/jpeg_quality_sweep_n50/`](runs/jpeg_quality_sweep_n50/)
+
+| Radius | Q=10 | Q=15 | Q=25 | Q=50 | Q=75 |
+|--------|------|------|------|------|------|
+| **AUC** | | | | | |
+| r=8 | 0.76 | 0.83 | 0.89 | 0.94 | 0.97 |
+| r=10 | 0.77 | 0.86 | 0.90 | 0.94 | 0.96 |
+| r=12 | 0.80 | 0.88 | 0.90 | 0.93 | 0.96 |
+| **TPR @ 1% FPR** | | | | | |
+| r=8 | 0.18 | 0.36 | 0.26 | 0.20 | 0.30 |
+| r=10 | 0.26 | 0.30 | 0.30 | 0.20 | 0.36 |
+| r=12 | 0.40 | 0.42 | 0.26 | 0.26 | 0.28 |
+| **TPR @ 5% FPR** | | | | | |
+| r=8 | 0.42 | 0.44 | 0.62 | 0.58 | 0.74 |
+| r=10 | 0.44 | 0.46 | 0.58 | 0.54 | 0.74 |
+| r=12 | 0.46 | 0.60 | 0.58 | 0.60 | 0.82 |
+| **Best accuracy** | | | | | |
+| r=8 | 0.72 | 0.80 | 0.83 | 0.90 | 0.93 |
+| r=10 | 0.74 | 0.80 | 0.83 | 0.91 | 0.94 |
+| r=12 | 0.75 | 0.81 | 0.85 | 0.91 | 0.94 |
+
+**Key findings:**
+- Detection degrades gracefully under heavier compression: AUC drops from ~0.96 (Q75) to ~0.77 (Q10).
+- Q25 numbers match Section C (r=10 AUC 0.90), confirming reproducibility.
+- Under strong compression (Q10–15), r=12 edges out r=8/r=10 slightly.
+- Under mild compression (Q50+), all radii converge to similar performance (~0.94+ AUC).
+
 ## Example commands
 
 ```bash
@@ -63,6 +96,9 @@ NUM_SAMPLES=50 bash scripts/run_jpeg_min_dist_radius_ablation.sh
 
 # Median × radius r∈{8,10,12} (JPEG Q25, n=50 per radius)
 NUM_SAMPLES=50 bash scripts/run_jpeg_median_radius_ablation.sh
+
+# Min-dist × JPEG quality sweep (Q∈{10,15,25,50,75} × R∈{8,10,12}, n=50)
+NUM_SAMPLES=50 bash scripts/run_jpeg_quality_sweep.sh
 ```
 
 Then always: `compute_sd_eval_metrics.py --csv <path> --out_dir <dir> --out_prefix <name>`.
