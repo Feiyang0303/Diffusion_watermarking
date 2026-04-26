@@ -1,0 +1,1 @@
+# One timestamp per line; appended by .github/workflows/daily_heartbeat.yml (UTC) or scripts/heartbeat_local.sh.

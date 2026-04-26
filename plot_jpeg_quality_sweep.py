@@ -19,7 +19,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 
-RADII = [8, 10, 12]
+RADII = [6, 8, 10, 12, 14]
 QUALITIES = [10, 15, 25, 50, 75]
 METRICS_DIR = "experiments/jpeg_defense/runs/jpeg_quality_sweep_n50"
 
@@ -54,8 +54,8 @@ def main() -> None:
                 if parsed:
                     data[r][q] = parsed
 
-    colors = {8: "#e74c3c", 10: "#2980b9", 12: "#27ae60"}
-    markers = {8: "o", 10: "s", 12: "D"}
+    colors = {6: "#8e44ad", 8: "#e74c3c", 10: "#2980b9", 12: "#27ae60", 14: "#e67e22"}
+    markers = {6: "v", 8: "o", 10: "s", 12: "D", 14: "^"}
 
     fig, axes = plt.subplots(2, 2, figsize=(14, 10), dpi=args.dpi)
     fig.patch.set_facecolor("white")

@@ -22,6 +22,12 @@ def main():
     parser.add_argument("--mode", choices=["generate", "detect", "both"], default="both")
     parser.add_argument("--key", choices=["zeros", "rand", "rings"], default="rings")
     parser.add_argument("--radius", type=int, default=10)
+    parser.add_argument(
+        "--radius-inner",
+        type=int,
+        default=0,
+        help="If >0, Fourier key only in annulus radius-inner < r <= radius (0 = filled disk, paper default).",
+    )
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--prompt", type=str, default="A photo of an astronaut riding a horse on Mars")
     parser.add_argument("--steps", type=int, default=50)
@@ -57,6 +63,7 @@ def main():
             (4, h, w),
             key_type=args.key,
             radius=args.radius,
+            radius_inner=args.radius_inner,
             seed=args.seed,
         )
         latents_watermarked = torch.from_numpy(latents_watermarked).unsqueeze(0).to(device).to(pipe.unet.dtype)
@@ -147,6 +154,7 @@ def main():
             inverted_noise,
             key_type=args.key,
             radius=args.radius,
+            radius_inner=args.radius_inner,
             seed=args.seed,
             return_p_value=True,
         )
@@ -159,7 +167,10 @@ def main():
         # Save detection result to file for comparison with paper
         result_file = out_dir / "detection_result.txt"
         with open(result_file, "w") as f:
-            f.write("Tree-Ring detection (key=%s, radius=%d, seed=%d)\n" % (args.key, args.radius, args.seed))
+            f.write(
+                "Tree-Ring detection (key=%s, radius=%d, radius_inner=%d, seed=%d)\n"
+                % (args.key, args.radius, args.radius_inner, args.seed)
+            )
             f.write("Prompt: %s\n" % args.prompt)
             f.write("distance: %.6f\n" % result["distance"])
             f.write("eta: %.6f\n" % result["eta"])

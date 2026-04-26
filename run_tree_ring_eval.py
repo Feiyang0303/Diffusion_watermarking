@@ -40,7 +40,13 @@ def main() -> None:
         choices=["zeros", "rand", "rings"],
         help="Tree-Ring key type",
     )
-    parser.add_argument("--radius", type=int, default=10, help="Tree-Ring radius")
+    parser.add_argument("--radius", type=int, default=10, help="Tree-Ring outer radius (Fourier bins)")
+    parser.add_argument(
+        "--radius-inner",
+        type=int,
+        default=0,
+        help="Annulus only: exclude dist <= this (0 = filled disk)",
+    )
     parser.add_argument("--seed", type=int, default=42, help="Base random seed")
     parser.add_argument(
         "--wm_perturb_std",
@@ -65,7 +71,7 @@ def main() -> None:
 
     print("Tree-Ring latent-level evaluation")
     print("---------------------------------")
-    print(f"key={args.key}, radius={args.radius}, seed={args.seed}")
+    print(f"key={args.key}, radius={args.radius}, radius_inner={args.radius_inner}, seed={args.seed}")
     if args.wm_perturb_std > 0:
         print(f"watermarked perturb std={args.wm_perturb_std}")
     print(f"latent_shape={latent_shape}, num_samples={args.num_samples}")
@@ -98,6 +104,7 @@ def main() -> None:
                 latent_shape,
                 key_type=args.key,
                 radius=args.radius,
+                radius_inner=args.radius_inner,
                 seed=args.seed,  # fixed key
                 noise_seed=args.seed + 1000 + i,  # vary base noise per-sample (paper-style)
             )
@@ -107,6 +114,7 @@ def main() -> None:
                 wm_noise,
                 key_type=args.key,
                 radius=args.radius,
+                radius_inner=args.radius_inner,
                 seed=args.seed,
                 return_p_value=True,
             )
@@ -131,6 +139,7 @@ def main() -> None:
                 rand_noise,
                 key_type=args.key,
                 radius=args.radius,
+                radius_inner=args.radius_inner,
                 seed=args.seed,
                 return_p_value=True,
             )

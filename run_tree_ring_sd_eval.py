@@ -132,6 +132,7 @@ def _detect_tree_ring_from_pil(
     steps: int,
     key: str,
     radius: int,
+    radius_inner: int,
     seed: int,
     detect_channel_agg: str,
     key_scale: float,
@@ -188,6 +189,7 @@ def _detect_tree_ring_from_pil(
         inverted_noise,
         key_type=key,
         radius=radius,
+        radius_inner=radius_inner,
         seed=seed,
         return_p_value=True,
         channel_agg=detect_channel_agg,
@@ -210,6 +212,12 @@ def main() -> None:
     parser.add_argument("--guidance_scale", type=float, default=7.5)
     parser.add_argument("--key", choices=["zeros", "rand", "rings"], default="rings")
     parser.add_argument("--radius", type=int, default=10)
+    parser.add_argument(
+        "--radius-inner",
+        type=int,
+        default=0,
+        help="Annulus Fourier mask: exclude dist <= this (0 = filled disk)",
+    )
     parser.add_argument("--seed", type=int, default=42, help="Base seed; sample i uses seed+ i")
     parser.add_argument("--out_dir", type=str, default="outputs_tree_ring_sd_eval")
     parser.add_argument("--out_csv", type=str, default="outputs_tree_ring_sd_eval/sd_eval.csv")
@@ -281,7 +289,7 @@ def main() -> None:
     print("Running SD eval")
     print("----------------")
     print(f"num_samples={args.num_samples}, steps={args.steps}, prompt={args.prompt!r}")
-    print(f"key={args.key}, radius={args.radius}, base_seed={args.seed}")
+    print(f"key={args.key}, radius={args.radius}, radius_inner={args.radius_inner}, base_seed={args.seed}")
     print(f"key_scale={args.key_scale}, detect_channel_agg={args.detect_channel_agg}")
     print(f"attacks={args._attack_list}")
     print(f"  jpeg_quality={args.jpeg_quality}, resize_short={args.resize_short}, crop_frac={args.crop_frac}")
@@ -317,6 +325,7 @@ def main() -> None:
                 (4, h, w),
                 key_type=args.key,
                 radius=args.radius,
+                radius_inner=args.radius_inner,
                 seed=args.seed,  # key seed is fixed across all samples (as in paper)
                 noise_seed=seed_i,  # vary base noise per sample
                 key_scale=args.key_scale,
@@ -386,6 +395,7 @@ def main() -> None:
                     steps=args.steps,
                     key=args.key,
                     radius=args.radius,
+                    radius_inner=args.radius_inner,
                     seed=args.seed,
                     detect_channel_agg=args.detect_channel_agg,
                     key_scale=args.key_scale,
@@ -398,6 +408,7 @@ def main() -> None:
                     steps=args.steps,
                     key=args.key,
                     radius=args.radius,
+                    radius_inner=args.radius_inner,
                     seed=args.seed,
                     detect_channel_agg=args.detect_channel_agg,
                     key_scale=args.key_scale,

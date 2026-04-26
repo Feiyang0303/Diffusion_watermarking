@@ -23,9 +23,11 @@ import matplotlib.pyplot as plt  # noqa: E402
 
 # Fallback when runs/min_dist_radius_n50/*.csv are missing (mixed n=20 / n=50).
 MIN_DIST_RADIUS_ROWS: dict[int, tuple[str, str, str, str, str]] = {
+    6: ("50", "0.88", "0.22", "0.66", "0.81"),
     8: ("50", "0.89", "0.26", "0.62", "0.83"),
     10: ("50", "0.90", "0.30", "0.58", "0.83"),
     12: ("50", "0.90", "0.26", "0.58", "0.85"),
+    14: ("50", "0.90", "0.28", "0.64", "0.85"),
 }
 
 # Mean × radius: n=20 WatGPU ablation numbers; n column forced to 50 until mean_radius_n50/*.csv overwrites.
@@ -59,8 +61,10 @@ def _merge_min_dist_rows(root: Path) -> tuple[dict[int, tuple[str, str, str, str
     d = root / "experiments/jpeg_defense/runs/min_dist_radius_n50"
     rows = dict(MIN_DIST_RADIUS_ROWS)
     loaded: list[str] = []
-    for r in (8, 10, 12):
+    for r in (6, 8, 10, 12, 14):
         p = d / f"metrics_jpeg_min_dist_r{r}_n50.csv"
+        if not p.is_file():
+            p = root / f"experiments/jpeg_defense/runs/jpeg_quality_sweep_n50/metrics_min_dist_r{r}_q25_n50.csv"
         if not p.is_file():
             continue
         parsed = _parse_jpeg_metrics_csv(p)
@@ -145,18 +149,11 @@ def main() -> None:
         ["Mean, r=10, k=1.0", *mean_rows[10]],
         ["Mean, r=12, k=1.0", *mean_rows[12]],
         # Min-dist + radius (JPEG)
-        [
-            "Min-dist (best ch.), r=8, k=1.0",
-            *min_dist_rows[8],
-        ],
-        [
-            "Min-dist (best ch.), r=10, k=1.0",
-            *min_dist_rows[10],
-        ],
-        [
-            "Min-dist (best ch.), r=12, k=1.0",
-            *min_dist_rows[12],
-        ],
+        ["Min-dist (best ch.), r=6, k=1.0", *min_dist_rows[6]],
+        ["Min-dist (best ch.), r=8, k=1.0", *min_dist_rows[8]],
+        ["Min-dist (best ch.), r=10, k=1.0", *min_dist_rows[10]],
+        ["Min-dist (best ch.), r=12, k=1.0", *min_dist_rows[12]],
+        ["Min-dist (best ch.), r=14, k=1.0", *min_dist_rows[14]],
     ]
 
     nrows = len(rows)

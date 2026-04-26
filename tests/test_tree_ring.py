@@ -73,6 +73,37 @@ class TestTreeRing(unittest.TestCase):
         self.assertEqual(key.shape, (h, w))
         self.assertEqual(mask.shape, (h, w))
 
+    def test_annulus_inject_detect_rings(self):
+        """Annulus mask (radius_inner > 0) should still inject/detect consistently."""
+        latent_shape = (4, 64, 64)
+        noise = inject_watermark_noise_latent(
+            latent_shape, key_type="rings", radius=10, radius_inner=4, seed=42
+        )
+        result = detect_tree_ring(
+            noise, key_type="rings", radius=10, radius_inner=4, seed=42, return_p_value=True
+        )
+        rng = np.random.default_rng(99)
+        random_noise = rng.standard_normal(latent_shape).astype(np.float32)
+        result_rand = detect_tree_ring(
+            random_noise,
+            key_type="rings",
+            radius=10,
+            radius_inner=4,
+            seed=42,
+            return_p_value=True,
+        )
+        self.assertLess(
+            result["distance"],
+            result_rand["distance"],
+            "Annulus watermarked noise should be closer to key than random",
+        )
+
+    def test_empty_annulus_raises(self):
+        with self.assertRaises(ValueError):
+            inject_watermark_noise_latent(
+                (4, 64, 64), key_type="rings", radius=5, radius_inner=5, seed=0
+            )
+
     def test_detect_median_min_dist_rings(self):
         """Median and min_dist aggregation should still detect injected rings noise."""
         latent_shape = (4, 64, 64)

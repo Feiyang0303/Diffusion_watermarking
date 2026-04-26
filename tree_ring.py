@@ -26,15 +26,34 @@ def _ifft2(x: np.ndarray) -> np.ndarray:
     return np.fft.ifft2(x).real
 
 
-def _get_circular_mask(h: int, w: int, r: int, center: Optional[Tuple[int, int]] = None) -> np.ndarray:
-    """Binary mask for low-frequency circular region (radius r in frequency bins)."""
+def _get_circular_mask(
+    h: int,
+    w: int,
+    r: int,
+    center: Optional[Tuple[int, int]] = None,
+    r_inner: int = 0,
+) -> np.ndarray:
+    """Binary mask in Fourier index space around spectrum center (h//2, w//2).
+
+    - r_inner == 0: filled disk, distance <= r (paper default).
+    - r_inner > 0: annulus only, r_inner < distance <= r (excludes DC core and inner disk).
+    """
+    if r < 0 or r_inner < 0:
+        raise ValueError("radius and radius_inner must be non-negative")
+    if r_inner > 0 and r_inner >= r:
+        raise ValueError(f"radius_inner ({r_inner}) must be < radius ({r}) for a non-empty annulus")
     if center is None:
         cy, cx = h // 2, w // 2
     else:
         cy, cx = center
     y = np.arange(h)[:, None] - cy
     x = np.arange(w)[None, :] - cx
-    return (y ** 2 + x ** 2 <= r ** 2).astype(np.float64)
+    d2 = y ** 2 + x ** 2
+    outer = d2 <= r ** 2
+    if r_inner <= 0:
+        return outer.astype(np.float64)
+    inner = d2 <= r_inner ** 2
+    return (outer & ~inner).astype(np.float64)
 
 
 # ---------------------------------------------------------------------------
@@ -103,6 +122,7 @@ def inject_watermark_noise(
     noise_shape: Tuple[int, ...],
     key_type: Literal["zeros", "rand", "rings"] = "rings",
     radius: int = 10,
+    radius_inner: int = 0,
     seed: Optional[int] = None,
     noise_seed: Optional[int] = None,
     num_rings: int = 4,
@@ -122,14 +142,18 @@ def inject_watermark_noise(
                 (h, w),
                 key_type=key_type,
                 radius=radius,
+                radius_inner=radius_inner,
                 seed=seed,
+                noise_seed=noise_seed,
                 num_rings=num_rings,
                 key_scale=key_scale,
             )
         return out
     # 2D
     h, w = noise_shape
-    mask = _get_circular_mask(h, w, radius)
+    mask = _get_circular_mask(h, w, radius, r_inner=radius_inner)
+    if int(mask.sum()) == 0:
+        raise ValueError("Fourier mask is empty; check radius and radius_inner")
     if key_type == "zeros":
         key = make_key_tree_ring_zeros((h, w), mask)
     elif key_type == "rand":
@@ -155,6 +179,7 @@ def inject_watermark_noise_latent(
     latent_shape: Tuple[int, int, int],
     key_type: Literal["zeros", "rand", "rings"] = "rings",
     radius: int = 10,
+    radius_inner: int = 0,
     seed: Optional[int] = None,
     noise_seed: Optional[int] = None,
     num_rings: int = 4,
@@ -162,11 +187,15 @@ def inject_watermark_noise_latent(
 ) -> np.ndarray:
     """(C, H, W) latent shape; inject same 2D key pattern in each channel.
 
+    radius_inner: if > 0, key only in annulus r_inner < dist <= radius (excludes inner disk).
+
     key_scale: multiply key Fourier coefficients in the masked region (>1 strengthens the
     watermark vs. inversion noise; typical JPEG-focused values are 1.05–1.25).
     """
     c, h, w = latent_shape
-    mask = _get_circular_mask(h, w, radius)
+    mask = _get_circular_mask(h, w, radius, r_inner=radius_inner)
+    if int(mask.sum()) == 0:
+        raise ValueError("Fourier mask is empty; check radius and radius_inner")
     if key_type == "zeros":
         key_2d = make_key_tree_ring_zeros((h, w), mask)
     elif key_type == "rand":
@@ -244,10 +273,13 @@ def build_key_for_detection(
     radius: int,
     seed: Optional[int] = None,
     num_rings: int = 4,
+    radius_inner: int = 0,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """Build the key and mask used at generation (must match for detection)."""
     h, w = shape
-    mask = _get_circular_mask(h, w, radius)
+    mask = _get_circular_mask(h, w, radius, r_inner=radius_inner)
+    if int(mask.sum()) == 0:
+        raise ValueError("Fourier mask is empty; check radius and radius_inner")
     if key_type == "zeros":
         key = make_key_tree_ring_zeros((h, w), mask)
     elif key_type == "rand":
@@ -261,6 +293,7 @@ def detect_tree_ring(
     inverted_noise: np.ndarray,
     key_type: Literal["zeros", "rand", "rings"] = "rings",
     radius: int = 10,
+    radius_inner: int = 0,
     seed: Optional[int] = None,
     num_rings: int = 4,
     return_p_value: bool = True,
@@ -278,10 +311,14 @@ def detect_tree_ring(
       - "min_dist": per channel, FFT then L1 distance to key; take the *minimum* distance and use that
         channel's eta/p_value (best single-channel match).
 
+    radius_inner: must match inject_watermark_noise_latent (0 = filled disk).
+
     key_scale: must match the value used in inject_watermark_noise_latent (embeds key * key_scale).
     """
     c, h, w = inverted_noise.shape
-    key, mask = build_key_for_detection((h, w), key_type, radius, seed=seed, num_rings=num_rings)
+    key, mask = build_key_for_detection(
+        (h, w), key_type, radius, seed=seed, num_rings=num_rings, radius_inner=radius_inner
+    )
     key = key * float(key_scale)
     mask_size = int(mask.sum())
 

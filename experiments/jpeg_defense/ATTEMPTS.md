@@ -47,35 +47,56 @@ WatGPU files: `metrics_jpeg_min_dist_r8_n50.csv`, `metrics_jpeg_min_dist_r10_n50
 ## E. Min-dist × JPEG quality sweep (k=1.0, n=50)
 
 How does `min_dist` detection hold up under varying JPEG compression strength?
-Sweeps Q∈{10,15,25,50,75} × R∈{8,10,12}. Lower quality = more aggressive compression.
+Sweeps **Q ∈ {10, 15, 25, 50, 75}** × **R ∈ {6, 8, 10, 12, 14}**. Lower **Q** = stronger lossy compression (PIL `Image.save(..., format="JPEG", quality=Q)` in `run_tree_ring_sd_eval.py`).
 
-**Script:** `NUM_SAMPLES=50 bash scripts/run_jpeg_quality_sweep.sh`  
-**In-repo:** [`runs/jpeg_quality_sweep_n50/`](runs/jpeg_quality_sweep_n50/)
+**Script:** `NUM_SAMPLES=50 bash scripts/run_jpeg_quality_sweep.sh` (r=8,10,12); extended radii: `scripts/run_jpeg_quality_sweep_r6_r14.sh`  
+**In-repo:** [`runs/jpeg_quality_sweep_n50/`](runs/jpeg_quality_sweep_n50/) — one metrics CSV per (radius, quality): `metrics_min_dist_r{R}_q{Q}_n50.csv`  
+**Figure:** [`results/jpeg_quality_sweep.png`](../../results/jpeg_quality_sweep.png)
+
+### JPEG quality levels (compression conditions tried)
+
+| Quality `Q` | Compression (qualitative) | Role in this study |
+|-------------|---------------------------|--------------------|
+| **10** | Very strong | Stress test; heavy blocking / HF loss |
+| **15** | Strong | Between harsh and paper baseline |
+| **25** | Strong (paper-style) | Matches Tree-Ring paper / rest of this doc |
+| **50** | Moderate | Typical “web-ish” save |
+| **75** | Mild | Light compression; near-lossless visually |
+
+### Metrics by radius × quality (columns = compression level)
 
 | Radius | Q=10 | Q=15 | Q=25 | Q=50 | Q=75 |
 |--------|------|------|------|------|------|
 | **AUC** | | | | | |
+| r=6 | 0.71 | 0.79 | 0.88 | 0.92 | 0.94 |
 | r=8 | 0.76 | 0.83 | 0.89 | 0.94 | 0.97 |
 | r=10 | 0.77 | 0.86 | 0.90 | 0.94 | 0.96 |
 | r=12 | 0.80 | 0.88 | 0.90 | 0.93 | 0.96 |
+| r=14 | 0.84 | 0.88 | 0.90 | 0.93 | 0.96 |
 | **TPR @ 1% FPR** | | | | | |
+| r=6 | 0.08 | 0.26 | 0.22 | 0.26 | 0.24 |
 | r=8 | 0.18 | 0.36 | 0.26 | 0.20 | 0.30 |
 | r=10 | 0.26 | 0.30 | 0.30 | 0.20 | 0.36 |
 | r=12 | 0.40 | 0.42 | 0.26 | 0.26 | 0.28 |
+| r=14 | 0.38 | 0.42 | 0.28 | 0.20 | 0.24 |
 | **TPR @ 5% FPR** | | | | | |
+| r=6 | 0.28 | 0.34 | 0.66 | 0.52 | 0.52 |
 | r=8 | 0.42 | 0.44 | 0.62 | 0.58 | 0.74 |
 | r=10 | 0.44 | 0.46 | 0.58 | 0.54 | 0.74 |
 | r=12 | 0.46 | 0.60 | 0.58 | 0.60 | 0.82 |
+| r=14 | 0.50 | 0.58 | 0.64 | 0.68 | 0.84 |
 | **Best accuracy** | | | | | |
+| r=6 | 0.66 | 0.75 | 0.81 | 0.89 | 0.90 |
 | r=8 | 0.72 | 0.80 | 0.83 | 0.90 | 0.93 |
 | r=10 | 0.74 | 0.80 | 0.83 | 0.91 | 0.94 |
 | r=12 | 0.75 | 0.81 | 0.85 | 0.91 | 0.94 |
+| r=14 | 0.79 | 0.83 | 0.85 | 0.92 | 0.94 |
 
 **Key findings:**
-- Detection degrades gracefully under heavier compression: AUC drops from ~0.96 (Q75) to ~0.77 (Q10).
-- Q25 numbers match Section C (r=10 AUC 0.90), confirming reproducibility.
-- Under strong compression (Q10–15), r=12 edges out r=8/r=10 slightly.
-- Under mild compression (Q50+), all radii converge to similar performance (~0.94+ AUC).
+- Detection degrades as compression strengthens (moving left in the table): AUC at Q10 is much lower than at Q75 for every radius.
+- **Wider mask (larger r)** helps most when compression is harsh (Q10–15); **r=14** leads there, **r=6** lags.
+- Q25 numbers for r=8/10/12 match Section C (e.g. r=10 AUC 0.90), confirming reproducibility.
+- Under mild compression (Q50+), radii converge to similar AUC (~0.92–0.97).
 
 ## Example commands
 
@@ -97,8 +118,9 @@ NUM_SAMPLES=50 bash scripts/run_jpeg_min_dist_radius_ablation.sh
 # Median × radius r∈{8,10,12} (JPEG Q25, n=50 per radius)
 NUM_SAMPLES=50 bash scripts/run_jpeg_median_radius_ablation.sh
 
-# Min-dist × JPEG quality sweep (Q∈{10,15,25,50,75} × R∈{8,10,12}, n=50)
-NUM_SAMPLES=50 bash scripts/run_jpeg_quality_sweep.sh
+# Min-dist × JPEG quality sweep — Q∈{10,15,25,50,75}, n=50
+NUM_SAMPLES=50 bash scripts/run_jpeg_quality_sweep.sh          # R∈{8,10,12}
+NUM_SAMPLES=50 bash scripts/run_jpeg_quality_sweep_r6_r14.sh    # R∈{6,14}
 ```
 
 Then always: `compute_sd_eval_metrics.py --csv <path> --out_dir <dir> --out_prefix <name>`.
