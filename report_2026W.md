@@ -157,7 +157,7 @@ The min-distance detector gave the best JPEG performance. With a larger mask rad
 
 *Figure 7.* JPEG quality sweep showing how detection performance changes as compression becomes stronger.
 
----
+
 
 ## 6. Conclusion
 
@@ -167,7 +167,7 @@ To improve JPEG robustness, I tested mean aggregation and min-distance detection
 
 Overall, the experiments suggest that Tree-Ring watermarking is a promising method for detecting diffusion-generated images, but JPEG robustness remains a key challenge. Future work should use larger evaluation sets, calibrate multi-channel detectors carefully, and explore watermark designs that are more robust to compression.
 
----
+
 
 ## Reference
 
