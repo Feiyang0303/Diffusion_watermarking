@@ -4,8 +4,12 @@
 set -e
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
+mkdir -p logs
 echo "$(date -u -Iseconds)Z heartbeat (local)" >> logs/heartbeat.log
 git add logs/heartbeat.log
-git diff --staged --quiet && { echo "Something to commit."; exit 0; }
+if git diff --staged --quiet; then
+  echo "Nothing new to commit."
+  exit 0
+fi
 git commit -m "chore: daily"
-echo "Pushed? Run: git push"
+echo "Committed. Run: git push"
